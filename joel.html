@@ -53,7 +53,7 @@
   .symbol {
     opacity: 0;
     transition: opacity 0.25s ease;
-    pointer-events: auto;
+    pointer-events: none; /* default: nicht interaktiv */
   }
 
   /* Alle Unterelemente eines Symbols starten mit unsichtbarer Stroke */
@@ -65,6 +65,7 @@
   /* sichtbar, wenn Region aktiv */
   .symbol-visible {
     opacity: 1;
+    pointer-events: auto; /* sichtbar => interaktiv */
   }
 
   /* aktiv (z. B. Klick auf Symbol) - Stroke wird sichtbar, Farbe per JS gesetzt */
@@ -356,6 +357,183 @@ function clearSelections(){
   activeRegions.clear();
 }
 
+/* ------------ Symbol-Logik ------------ */
+
+/**
+ * Sichtbarkeit der Symbole updaten.
+ * keys: Array von Region-Namen (z. B. ['costa','sierra'])
+ *
+ * Verhalten:
+ * - Wenn keys leer => alle Symbole ausblenden
+ * - Sonst werden nur Symbole sichtbar, deren ID mit '-<region>' endet
+ *   (z. B. symbol-mining-sierra => Region 'sierra')
+ */
+function updateSymbolsForRegions(keys){
+  const activeKeys = Array.isArray(keys) ? keys : [];
+  // normalize: kleine Buchstaben, trim
+  const normalized = activeKeys.map(k => String(k).toLowerCase().trim());
+
+  svgSymbols.forEach(sym => {
+    sym.classList.remove('symbol-visible','symbol-active');
+    sym.style.pointerEvents = 'none'; // default inaktiv
+
+    const id = sym.id || '';
+    const parts = id.split('-');
+    const region = parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase().trim() : '';
+
+    // sichtbar, wenn die region in den ausgewählten keys ist
+    if(normalized.includes(region)){
+      sym.classList.add('symbol-visible');
+      sym.style.pointerEvents = 'auto';
+    } else {
+      // verstecken & reset stroke opacity (falls aktiv)
+      sym.classList.remove('symbol-visible','symbol-active');
+      sym.style.pointerEvents = 'none';
+      sym.querySelectorAll('*').forEach(el => {
+        try { el.style.strokeOpacity = '0'; } catch(e){ }
+      });
+    }
+  });
+}
+
+/* initialisiert Regionen (Flächen) und Symbole im SVG */
+function initSvgInteractions(svg){
+  if(!svg) return;
+  svgRegions = [];
+  svgSymbols = [];
+
+  // Regionen (IDs wie 'costa','sierra','selva','peru','sea','other_countries')
+  Object.keys(ID_MAP).forEach(id=>{
+    const el = svg.querySelector('#'+id);
+    if(!el) return;
+    const key = ID_MAP[id];
+    el.classList.add('region');
+    el.dataset.key = key;
+    el.style.cursor = 'pointer';
+    el.style.pointerEvents = 'all';
+    setState(el,key,'base');
+    svgRegions.push(el);
+  });
+
+  // Symbole: IDs müssen mit "symbol-" beginnen (z. B. symbol-mining-sierra)
+  svgSymbols = Array.from(svg.querySelectorAll('[id^="symbol-"]'));
+  svgSymbols.forEach(sym => {
+    sym.classList.add('symbol');
+    // dataset.region setzen (für einfaches Matching)
+    const id = sym.id || '';
+    const parts = id.split('-');
+    const region = parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase().trim() : '';
+    sym.dataset.region = region;
+    // default: nicht interaktiv (wird gesetzt, wenn sichtbar)
+    sym.style.pointerEvents = 'none';
+  });
+
+  // Region-Eventhandler
+  svgRegions.forEach(el=>{
+    const key = el.dataset.key || 'peru';
+    el.addEventListener('mouseenter', (ev)=>{
+      if(activeRegions.has(el)) return;
+      setState(el,key,'hover');
+    });
+    el.addEventListener('mouseleave', (ev)=>{
+      if(activeRegions.has(el)) return;
+      setState(el,key,'base');
+    });
+
+    el.addEventListener('click', (ev)=>{
+      ev.preventDefault();
+      if(ev.ctrlKey){
+        // Mehrfachauswahl: selektiere alle Regionen unter dem Mauspunkt
+        let hits = [];
+        try {
+          const doc = svg.ownerDocument;
+          hits = doc.elementsFromPoint(ev.clientX, ev.clientY).filter(n => n.classList && n.classList.contains('region'));
+        } catch(e){
+          const x=ev.clientX,y=ev.clientY;
+          hits = svgRegions.filter(r=>{
+            const rect = r.getBoundingClientRect();
+            return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom;
+          });
+        }
+        hits.forEach(h => toggleSelect(h));
+      } else {
+        const already = activeRegions.has(el);
+        clearSelections();
+        if(!already){
+          toggleSelect(el);
+        }
+      }
+      updateRightPanel();
+    });
+  });
+
+  // Symbol-Klick: macht Stroke sichtbar und setzt passende Farbe
+  svgSymbols.forEach(sym => {
+    sym.addEventListener('click', e => {
+      e.stopPropagation(); // Klick auf Symbol soll nicht Region-Click triggern
+
+      // Symbol nur reagieren lassen, wenn sichtbar
+      if(!sym.classList.contains('symbol-visible')) return;
+
+      // toggeln: wenn schon aktiv, deaktiviere; sonst aktiviere und deaktiviere andere
+      const wasActive = sym.classList.contains('symbol-active');
+
+      svgSymbols.forEach(s => s.classList.remove('symbol-active'));
+      if(wasActive){
+        // wenn es bereits aktiv war -> jetzt aus
+        sym.classList.remove('symbol-active');
+        sym.querySelectorAll('*').forEach(el => {
+          try { el.style.strokeOpacity = '0'; } catch(e){ }
+        });
+      } else {
+        sym.classList.add('symbol-active');
+        const region = (sym.dataset.region || 'peru');
+        const strokeColor = SYMBOL_STROKE[region] || SYMBOL_STROKE['peru'] || '#000';
+
+        sym.querySelectorAll('*').forEach(el => {
+          try {
+            el.style.stroke = strokeColor;
+            el.style.strokeOpacity = '1';
+          } catch(e){ /* ignore */ }
+        });
+      }
+    });
+  });
+
+  // optional: per Default alle Symbole ausblenden; falls du eine Default-Auswahl willst, setze hier toggleSelect
+  // Beispiel: automatisch Costa auswählen:
+  // const c = svg.querySelector('[data-key="costa"]'); if(c){ toggleSelect(c); updateRightPanel(); }
+}
+
+mapObject.addEventListener('load', ()=>{
+  try {
+    const svg = mapObject.contentDocument && mapObject.contentDocument.documentElement;
+    if(svg){
+      initSvgInteractions(svg);
+    } else throw new Error('no svg root');
+  } catch(e){
+    attemptFetchInline();
+  }
+});
+
+async function attemptFetchInline(){
+  try{
+    const path = mapObject.getAttribute('data') || 'map.svg';
+    const resp = await fetch(path);
+    if(!resp.ok) throw new Error('fetch failed '+resp.status);
+    const text = await resp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text,'image/svg+xml');
+    const svgEl = doc.documentElement;
+    svgEl.id = 'inlined-map';
+    mapObject.replaceWith(svgEl);
+    initSvgInteractions(svgEl);
+  } catch(err){
+    console.error('SVG inline failed', err);
+    document.getElementById('region-name').textContent = 'SVG konnte nicht geladen werden.';
+  }
+}
+
 /* Update right panel und Symbole:
    wenn 'peru' oder alle drei Unterregionen ausgewählt -> zeige REGION_DATA.peru */
 function updateRightPanel(){
@@ -392,150 +570,6 @@ function updateRightPanel(){
   document.getElementById('world').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].world : '').join('');
   document.getElementById('problems').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].problems : '').join('');
   attachTermHandlers(document.getElementById('info-panel'));
-}
-
-/* ------------ Symbol-Logik ------------ */
-
-/**
- * Sichtbarkeit der Symbole updaten.
- * keys: Array von Region-Namen (z. B. ['costa','sierra'])
- */
-function updateSymbolsForRegions(keys){
-  // keys kann leer sein
-  svgSymbols.forEach(sym => {
-    sym.classList.remove('symbol-visible', 'symbol-active');
-
-    const id = sym.id || '';
-    const parts = id.split('-');
-    const region = parts[parts.length - 1]; // letzte Komponente ist Region
-    // sichtbar, wenn die Region in keys ist, ODER wenn 'peru' direkt ausgewählt (dann evtl. nur symbol-peru sichtbar)
-    if(keys.includes(region) || keys.includes('peru')){
-      sym.classList.add('symbol-visible');
-    } else {
-      // zusätzlich: wenn keys enthält alle drei Unterregionen, könnten wir alle Symbole zeigen
-      // hier behalten wir einfach das Verhalten: nur direkte Treffer zeigen
-    }
-  });
-}
-
-/* initialisiert Regionen (Flächen) und Symbole im SVG */
-function initSvgInteractions(svg){
-  if(!svg) return;
-  svgRegions = [];
-  svgSymbols = [];
-
-  // Regionen (IDs wie 'costa','sierra','selva','peru','sea','other_countries')
-  Object.keys(ID_MAP).forEach(id=>{
-    const el = svg.querySelector('#'+id);
-    if(!el) return;
-    const key = ID_MAP[id];
-    el.classList.add('region');
-    el.dataset.key = key;
-    el.style.cursor = 'pointer';
-    el.style.pointerEvents = 'all';
-    setState(el,key,'base');
-    svgRegions.push(el);
-  });
-
-  // Symbole: IDs müssen mit "symbol-" beginnen (z. B. symbol-mining-sierra)
-  svgSymbols = Array.from(svg.querySelectorAll('[id^="symbol-"]'));
-  svgSymbols.forEach(sym => {
-    sym.classList.add('symbol');
-    // sicherstellen, dass alle Unterelemente eine Stroke haben (Inkscape-Empfehlung)
-    // (falls nicht, kann man hier keine Stroke hinzufügen, das muss in Inkscape passieren)
-    sym.style.pointerEvents = 'auto';
-  });
-
-  // Region-Eventhandler
-  svgRegions.forEach(el=>{
-    const key = el.dataset.key || 'peru';
-    el.addEventListener('mouseenter', (ev)=>{
-      if(activeRegions.has(el)) return;
-      setState(el,key,'hover');
-    });
-    el.addEventListener('mouseleave', (ev)=>{
-      if(activeRegions.has(el)) return;
-      setState(el,key,'base');
-    });
-
-    el.addEventListener('click', (ev)=>{
-      ev.preventDefault();
-      if(ev.ctrlKey){
-        let hits = [];
-        try {
-          const doc = svg.ownerDocument;
-          hits = doc.elementsFromPoint(ev.clientX, ev.clientY).filter(n => n.classList && n.classList.contains('region'));
-        } catch(e){
-          const x=ev.clientX,y=ev.clientY;
-          hits = svgRegions.filter(r=>{
-            const rect = r.getBoundingClientRect();
-            return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom;
-          });
-        }
-        hits.forEach(h => toggleSelect(h));
-      } else {
-        const already = activeRegions.has(el);
-        clearSelections();
-        if(!already){
-          toggleSelect(el);
-        }
-      }
-      updateRightPanel();
-    });
-  });
-
-  // Symbol-Klick: macht Stroke sichtbar und setzt passende Farbe
-  svgSymbols.forEach(sym => {
-    sym.addEventListener('click', e => {
-      e.stopPropagation(); // Klick auf Symbol soll nicht Region-Click triggern
-      // entferne aktive Markierungen bei anderen Symbolen
-      svgSymbols.forEach(s => s.classList.remove('symbol-active'));
-      sym.classList.add('symbol-active');
-
-      const id = sym.id || '';
-      const parts = id.split('-');
-      const region = parts[parts.length - 1]; // z.B. 'sierra'
-      const strokeColor = SYMBOL_STROKE[region] || SYMBOL_STROKE['peru'] || '#000';
-
-      // setze stroke-farbe für alle Unterelemente des Symbols
-      sym.querySelectorAll('*').forEach(el => {
-        try { el.style.stroke = strokeColor; } catch(e){ /* ignore */ }
-      });
-    });
-  });
-
-  // optional: per Default alle Symbole ausgeblendet; wenn du "peru" standardmäßig markieren möchtest,
-  // kannst du hier toggleSelect auf das 'peru' Element ausführen.
-  // const per = svg.querySelector('[data-key="peru"]'); if(per){ toggleSelect(per); updateRightPanel(); }
-}
-
-mapObject.addEventListener('load', ()=>{
-  try {
-    const svg = mapObject.contentDocument && mapObject.contentDocument.documentElement;
-    if(svg){
-      initSvgInteractions(svg);
-    } else throw new Error('no svg root');
-  } catch(e){
-    attemptFetchInline();
-  }
-});
-
-async function attemptFetchInline(){
-  try{
-    const path = mapObject.getAttribute('data') || 'joel.svg';
-    const resp = await fetch(path);
-    if(!resp.ok) throw new Error('fetch failed '+resp.status);
-    const text = await resp.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text,'image/svg+xml');
-    const svgEl = doc.documentElement;
-    svgEl.id = 'inlined-map';
-    mapObject.replaceWith(svgEl);
-    initSvgInteractions(svgEl);
-  } catch(err){
-    console.error('SVG inline failed', err);
-    document.getElementById('region-name').textContent = 'SVG konnte nicht geladen werden.';
-  }
 }
 
 /* Modal für Begriffe */
