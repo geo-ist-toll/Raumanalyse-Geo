@@ -48,12 +48,12 @@
   @media (max-width:900px){#layout{grid-template-columns:1fr} object{height:520px}}
 
   /* =========================
-     Symbole (SVG)
+      Symbole (SVG)
      ========================= */
   .symbol {
-    opacity: 0;
+    opacity: 0; /* Standard: unsichtbar */
     transition: opacity 0.25s ease;
-    pointer-events: none; /* default: nicht interaktiv */
+    pointer-events: none; /* nicht klickbar, wenn unsichtbar */
   }
 
   /* Alle Unterelemente eines Symbols starten mit unsichtbarer Stroke */
@@ -65,7 +65,7 @@
   /* sichtbar, wenn Region aktiv */
   .symbol-visible {
     opacity: 1;
-    pointer-events: auto; /* sichtbar => interaktiv */
+    pointer-events: auto; /* jetzt klickbar */
   }
 
   /* aktiv (z. B. Klick auf Symbol) - Stroke wird sichtbar, Farbe per JS gesetzt */
@@ -83,12 +83,10 @@
 <h1>Peru – Raumanalyse</h1>
 
 <div id="layout">
-  <!-- MAP -->
   <div id="map-container">
     <object id="map-object" data="map.svg" type="image/svg+xml"></object>
   </div>
 
-  <!-- INFO PANEL -->
   <div id="info-panel">
     <div class="section">
       <h2>Region</h2>
@@ -124,12 +122,11 @@
   </div>
 </div>
 
-<!-- Modal -->
 <div id="term-modal-container" style="display:none"></div>
 
 <script>
 /* ============================================================
-   EDITABLE: Begriffe & Definitionen (leicht änderbar)
+   EDITABLE: Begriffe & Definitionen
    ============================================================ */
 const TERMS = {
   "Bad Governance": "Schlechte Regierungsführung: Staatliche Institutionen funktionieren nicht effizient oder gerecht; es fehlen Transparenz, Rechenschaftspflicht und langfristige Planung.",
@@ -322,7 +319,7 @@ const SYMBOL_STROKE = {
   costa:  "#d9480f",   // warm / Wirtschaft (orange)
   sierra: "#2b8a3e",   // grün / Hochland
   selva:  "#087f5b",   // dunkelgrün / Regenwald
-  peru:   "#1c7ed6"     // blau / Staat
+  peru:   "#1c7ed6"    // blau / Staat
 };
 let svgSymbols = []; // wird in initSvgInteractions befüllt
 
@@ -362,11 +359,6 @@ function clearSelections(){
 /**
  * Sichtbarkeit der Symbole updaten.
  * keys: Array von Region-Namen (z. B. ['costa','sierra'])
- *
- * Verhalten:
- * - Wenn keys leer => alle Symbole ausblenden
- * - Sonst werden nur Symbole sichtbar, deren ID mit '-<region>' endet
- *   (z. B. symbol-mining-sierra => Region 'sierra')
  */
 function updateSymbolsForRegions(keys){
   const activeKeys = Array.isArray(keys) ? keys : [];
@@ -499,10 +491,6 @@ function initSvgInteractions(svg){
       }
     });
   });
-
-  // optional: per Default alle Symbole ausblenden; falls du eine Default-Auswahl willst, setze hier toggleSelect
-  // Beispiel: automatisch Costa auswählen:
-  // const c = svg.querySelector('[data-key="costa"]'); if(c){ toggleSelect(c); updateRightPanel(); }
 }
 
 mapObject.addEventListener('load', ()=>{
@@ -534,8 +522,7 @@ async function attemptFetchInline(){
   }
 }
 
-/* Update right panel und Symbole:
-   wenn 'peru' oder alle drei Unterregionen ausgewählt -> zeige REGION_DATA.peru */
+/* Update right panel und Symbole */
 function updateRightPanel(){
   const keysInOrder = Array.from(activeRegions).map(el => el.dataset.key).filter(Boolean);
   const uniqueKeys = Array.from(new Set(keysInOrder));
