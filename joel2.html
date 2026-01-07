@@ -1,323 +1,419 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Peru – Raumanalyse</title>
+  <meta charset="UTF-8" />
+  <title>Raumanalyse Peru – Interaktive Karte</title>
 
-<style>
-:root{
-  --blue:#4dabf7;
-  --blue-light:#e7f5ff;
-  --sea-base:#e7f8ff;
-  --sea-hover:#d0efff;
-  --sea-active:#4dabf7;
-  --gray-base:#f3f4f6;
-  --gray-hover:#e0e3e6;
-  --gray-active:#adb5bd;
-  --sand:#ffd43b;
-  --green:#69db7c;
-  --green-light:#d3f9d8;
-  --jungle:#2f9e44;
-}
+  <style>
+    /* ==============================
+       GRUNDLAYOUT
+    ============================== */
 
-body{
-  margin:0;
-  font-family:Arial,Helvetica,sans-serif;
-  background:var(--gray-base);
-  color:#222
-}
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      height: 100vh;
+      background: #f4f6f8;
+      color: #222;
+    }
 
-h1{text-align:center;margin:18px 0}
+    #map-container {
+      width: 60%;
+      border-right: 2px solid #ccc;
+      background: #fff;
+    }
 
-#layout{
-  display:grid;
-  grid-template-columns:60% 40%;
-  gap:14px;
-  max-width:1200px;
-  margin:auto;
-  padding:14px
-}
+    #info {
+      width: 40%;
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
 
-#map-container,#info-panel{
-  background:#fff;
-  border-radius:12px;
-  padding:14px;
-  box-shadow:0 8px 22px rgba(0,0,0,0.08)
-}
+    #info h2 {
+      margin-top: 0;
+      font-size: 24px;
+    }
 
-object{
-  width:100%;
-  height:640px;
-  border:0;
-  display:block
-}
+    #info p {
+      line-height: 1.6;
+    }
 
-.section{margin-bottom:14px}
-.section h2{margin:0 0 6px;color:var(--blue);font-size:16px}
-.section p,.section li{font-size:14px;line-height:1.45}
-.section ul{padding-left:18px;margin:6px 0 0 0}
-.note{font-style:italic;color:#666}
+    #info ul {
+      margin-left: 18px;
+    }
 
-/* klickbare begriffe */
-.term-btn{
-  display:inline-block;
-  border:0;
-  background:transparent;
-  padding:0;
-  margin:0 2px;
-  font-weight:700;
-  cursor:pointer;
-  text-decoration:underline dotted;
-}
+    #info li {
+      margin-bottom: 6px;
+    }
 
-/* modal */
-.modal-backdrop{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.45);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999
-}
+    /* ==============================
+       SYMBOL-STEUERUNG
+    ============================== */
 
-.modal{
-  background:#fff;
-  border-radius:10px;
-  padding:16px;
-  max-width:720px;
-  width:94%;
-  box-shadow:0 14px 40px rgba(0,0,0,0.25)
-}
+    .symbol-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
 
-.modal h3{margin:0 0 8px}
-.modal p{margin:0 0 8px}
+    .symbol-visible {
+      opacity: 1;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: opacity 0.25s ease;
+    }
 
-.modal .close{
-  display:inline-block;
-  margin-top:12px;
-  padding:8px 12px;
-  border-radius:8px;
-  background:var(--blue);
-  color:#fff;
-  border:0;
-  cursor:pointer
-}
+    .symbol-visible:hover path,
+    .symbol-visible:hover rect,
+    .symbol-visible:hover circle,
+    .symbol-visible:hover polygon,
+    .symbol-visible:hover line {
+      stroke-opacity: 1;
+      stroke-width: 2;
+    }
 
-footer{font-size:12px;color:#666;margin-top:8px}
+    /* ==============================
+       REGIONS-HOVER (optional)
+    ============================== */
 
-/* ========================= Symbole (SVG) ========================= */
-.symbol{
-  opacity:0;
-  transition:opacity 0.25s ease;
-  pointer-events:none
-}
-
-.symbol *{
-  stroke-opacity:0;
-  transition:stroke-opacity 0.25s ease, stroke 0.25s ease
-}
-
-.symbol-visible{
-  opacity:1;
-  pointer-events:auto
-}
-
-.symbol-active *{
-  stroke-opacity:1
-}
-</style>
+    .region-hover {
+      filter: brightness(0.9);
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>Peru – Raumanalyse</h1>
+  <!-- ==============================
+       KARTE
+  ============================== -->
+  <div id="map-container">
+    <object
+      id="peru-svg"
+      data="map.svg"
+      type="image/svg+xml"
+      width="100%"
+      height="100%">
+    </object>
+  </div>
 
-<div id="layout">
+  <!-- ==============================
+       INFOBEREICH
+  ============================== -->
+  <div id="info">
+    <h2 id="info-title">Peru – Raumanalyse</h2>
+    <p id="info-text">
+      Klicke auf eine Region oder ein Symbol, um eine fachliche Erklärung zu erhalten.
+    </p>
+  </div>
 
-<div id="map-container">
-  <object id="map-object" data="map.svg" type="image/svg+xml"></object>
-</div>
+  <!-- ==============================
+       JAVASCRIPT
+  ============================== -->
+  <script>
+    const svgObject = document.getElementById("peru-svg");
 
-<div id="info-panel">
+    svgObject.addEventListener("load", () => {
+      const svgDoc = svgObject.contentDocument;
 
-<div class="section">
-<h2>Region</h2>
-<p id="region-name" class="note">
-Bitte eine Region anklicken (STRG für Mehrfachauswahl)
-</p>
-</div>
+      if (!svgDoc) {
+        console.error("SVG konnte nicht geladen werden.");
+        return;
+      }
 
-<div class="section"><h2>Fakten</h2><div id="facts">—</div></div>
-<div class="section"><h2>Naturraum & Entwicklung</h2><div id="nature">—</div></div>
-<div class="section"><h2>Gesellschaft & Politik</h2><div id="society">—</div></div>
-<div class="section"><h2>Weltwirtschaft</h2><div id="world">—</div></div>
-<div class="section"><h2>Disparitäten & Probleme</h2><div id="problems">—</div></div>
+      /* ==============================
+         REGIONEN
+      ============================== */
+      const regions = {
+        peru: svgDoc.getElementById("peru"),
+        costa: svgDoc.getElementById("costa"),
+        sierra: svgDoc.getElementById("sierra"),
+        selva: svgDoc.getElementById("selva")
+      };
 
-<footer>
-Projekt: Raumanalyse Peru von Lasse, Leon, Lille und Mark
-</footer>
+      /* ==============================
+         SYMBOLE
+      ============================== */
+      const symbols = Array.from(
+        svgDoc.querySelectorAll('[id^="symbol-"]')
+      );
 
-</div>
-</div>
+      /* ==============================
+         FARBEN (einheitlich)
+      ============================== */
+      symbols.forEach(sym => {
+        sym.classList.add("symbol-hidden");
 
-<div id="term-modal-container" style="display:none"></div>
-
-<script>
-/* ============================================================
-BEGRIFFE & DEFINITIONEN
-============================================================ */
-const TERMS = {
-  "Bad Governance":
-    "Schlechte Regierungsführung: Staatliche Institutionen funktionieren nicht effizient oder gerecht; es fehlen Transparenz, Rechenschaftspflicht und langfristige Planung.",
-  "Korruption":
-    "Missbrauch anvertrauter Macht zum privaten Vorteil (z. B. Bestechung, Vetternwirtschaft).",
-  "Subsistenzwirtschaft":
-    "Landwirtschaftliche Wirtschaftsform zur Eigenversorgung.",
-  "Terms of Trade":
-    "Austauschverhältnis zwischen Export- und Importpreisen.",
-  "Fragmentierung":
-    "Räumliche oder soziale Zersplitterung.",
-  "Landflucht":
-    "Abwanderung vom Land in Städte."
-};
-
-/* ============================================================
-REGIONSDATEN (INHALT UNGEKÜRZT)
-============================================================ */
-const REGION_DATA = {
-  peru:{
-    name:"Peru (zusammengefasst)",
-    facts:`<ul>
-      <li><strong>Lage:</strong> West-Südamerika, Pazifikküste</li>
-      <li><strong>Bevölkerung:</strong> Küstenzentriert</li>
-      <li><strong>Wirtschaft:</strong> Rohstoffe & Agrar-Exporte</li>
-    </ul>`,
-    nature:`<ul>
-      <li>Dreiteilung: Costa – Sierra – Selva</li>
-      <li>Hohe Naturrisiken</li>
-    </ul>`,
-    society:`<ul>
-      <li>Starke soziale Disparitäten</li>
-      <li>Landflucht</li>
-    </ul>`,
-    world:`<ul>
-      <li>Stark in den Welthandel eingebunden</li>
-    </ul>`,
-    problems:`<ul>
-      <li><button class="term-btn" data-term="Bad Governance">Bad Governance</button></li>
-      <li><button class="term-btn" data-term="Korruption">Korruption</button></li>
-    </ul>`
-  },
-
-  costa:{
-    name:"Costa (Küste)",
-    facts:`<ul><li>Lima als Metropole</li></ul>`,
-    nature:`<ul><li>Humboldtstrom</li></ul>`,
-    society:`<ul><li>Exportlandwirtschaft</li></ul>`,
-    world:`<ul><li>Häfen & Handel</li></ul>`,
-    problems:`<ul><li>Wasserknappheit</li></ul>`
-  },
-
-  sierra:{
-    name:"Sierra (Anden)",
-    facts:`<ul><li>Bergbau</li></ul>`,
-    nature:`<ul><li>Steiles Relief</li></ul>`,
-    society:`<ul>
-      <li><button class="term-btn" data-term="Subsistenzwirtschaft">Subsistenzwirtschaft</button></li>
-    </ul>`,
-    world:`<ul><li>Rohstoffexporte</li></ul>`,
-    problems:`<ul><li>Landflucht</li></ul>`
-  },
-
-  selva:{
-    name:"Selva (Amazonas)",
-    facts:`<ul><li>Regenwald</li></ul>`,
-    nature:`<ul><li>Biodiversität</li></ul>`,
-    society:`<ul><li>Indigene Gruppen</li></ul>`,
-    world:`<ul><li>Rohstoffgewinnung</li></ul>`,
-    problems:`<ul>
-      <li>Abholzung</li>
-      <li><button class="term-btn" data-term="Korruption">Korruption</button></li>
-    </ul>`
-  }
-};
-
-/* ============================================================
-SVG & SYMBOL-LOGIK
-============================================================ */
-const mapObject = document.getElementById("map-object");
-
-mapObject.addEventListener("load",()=>{
-  const svg = mapObject.contentDocument;
-  if(!svg) return;
-
-  const regions = ["costa","sierra","selva","peru"];
-  const symbols = svg.querySelectorAll('[id^="symbol-"]');
-
-  symbols.forEach(sym=>{
-    sym.classList.add("symbol");
-    sym.querySelectorAll("*").forEach(el=>{
-      el.style.fill="#333";
-    });
-  });
-
-  regions.forEach(r=>{
-    const el = svg.getElementById(r);
-    if(!el) return;
-
-    el.style.cursor="pointer";
-
-    el.addEventListener("click",()=>{
-      const d = REGION_DATA[r];
-      if(!d) return;
-
-      document.getElementById("region-name").textContent=d.name;
-      ["facts","nature","society","world","problems"].forEach(k=>{
-        document.getElementById(k).innerHTML=d[k];
+        sym.querySelectorAll("*").forEach(el => {
+          el.style.fill = "#333";
+          el.style.stroke = "#1a4fa3";
+          el.style.strokeOpacity = "0";
+        });
       });
 
-      symbols.forEach(s=>{
-        s.classList.remove("symbol-visible","symbol-active");
-        if(s.id.endsWith("-"+r)){
-          s.classList.add("symbol-visible");
+      /* ==============================
+         DATEN: REGIONEN
+      ============================== */
+      const REGION_DATA = {
+        peru: {
+          title: "Peru – Gesamtstaat",
+          html: `
+            <p>
+              Peru ist ein Staat mit sehr starken regionalen Gegensätzen.
+              Diese Unterschiede beeinflussen Wirtschaft, Bevölkerung,
+              Infrastruktur und Entwicklungsmöglichkeiten erheblich.
+            </p>
+            <ul>
+              <li>Starke Konzentration von Macht und Kapital in Lima</li>
+              <li>Große soziale und wirtschaftliche Disparitäten</li>
+              <li>Abhängigkeit von Rohstoffexporten</li>
+              <li>Politische Instabilität und Korruption als Entwicklungshemmnisse</li>
+            </ul>
+          `
+        },
+        costa: {
+          title: "Costa – Küstenregion",
+          html: `
+            <p>
+              Die Costa ist das wirtschaftliche Zentrum Perus.
+              Trotz des trockenen Klimas ist sie die am dichtesten besiedelte Region.
+            </p>
+            <ul>
+              <li>Lima als Metropole und politisches Zentrum</li>
+              <li>Häfen als Schnittstelle zum Weltmarkt</li>
+              <li>Exportorientierte Landwirtschaft durch Bewässerung</li>
+            </ul>
+          `
+        },
+        sierra: {
+          title: "Sierra – Anden",
+          html: `
+            <p>
+              Die Sierra ist geprägt durch Hochgebirge, schwierige Lebensbedingungen
+              und eine starke Abhängigkeit vom Bergbau.
+            </p>
+            <ul>
+              <li>Rohstoffabbau (Kupfer, Silber, Zink)</li>
+              <li>Subsistenzwirtschaft im Hochland</li>
+              <li>Hohe Anfälligkeit für Naturgefahren</li>
+            </ul>
+          `
+        },
+        selva: {
+          title: "Selva – Amazonasgebiet",
+          html: `
+            <p>
+              Die Selva ist dünn besiedelt, schwer zugänglich und ökologisch sehr wertvoll.
+              Gleichzeitig steht sie unter starkem Nutzungsdruck.
+            </p>
+            <ul>
+              <li>Dichter Regenwald</li>
+              <li>Abholzung und Ressourcenausbeutung</li>
+              <li>Große Infrastrukturdefizite</li>
+            </ul>
+          `
         }
+      };
+
+      /* ==============================
+         DATEN: SYMBOLE
+      ============================== */
+      const SYMBOL_DATA = {
+        "symbol-city-costa": {
+          title: "Metropole / Bevölkerungszentrum",
+          html: `
+            <p>
+              Lima ist das wirtschaftliche, politische und demografische Zentrum Perus.
+            </p>
+            <ul>
+              <li>Hohe Bevölkerungsdichte</li>
+              <li>Viele Arbeitsplätze im Dienstleistungssektor</li>
+              <li>Starke Binnenmigration</li>
+            </ul>
+          `
+        },
+
+        "symbol-agriculture-export-costa": {
+          title: "Exportorientierte Landwirtschaft",
+          html: `
+            <p>
+              Durch Bewässerungsprojekte ist intensive Landwirtschaft in der Wüste möglich.
+            </p>
+            <ul>
+              <li>Spargel, Avocados, Blaubeeren</li>
+              <li>Produktion für den Weltmarkt</li>
+              <li>Ungleiche Landverteilung</li>
+            </ul>
+          `
+        },
+
+        "symbol-export-port-costa": {
+          title: "Häfen & Export",
+          html: `
+            <p>
+              Häfen verbinden Peru mit dem Weltmarkt.
+            </p>
+            <ul>
+              <li>Export von Rohstoffen</li>
+              <li>Export von Agrarprodukten</li>
+              <li>Starke Abhängigkeit vom Welthandel</li>
+            </ul>
+          `
+        },
+
+        "symbol-mining-sierra": {
+          title: "Bergbau",
+          html: `
+            <p>
+              Der Bergbau ist einer der wichtigsten Wirtschaftszweige Perus.
+            </p>
+            <ul>
+              <li>Kupfer, Silber, Zink</li>
+              <li>Umweltbelastungen</li>
+              <li>Konflikte mit lokaler Bevölkerung</li>
+            </ul>
+          `
+        },
+
+        "symbol-subsistence-sierra": {
+          title: "Subsistenzwirtschaft",
+          html: `
+            <p>
+              Viele Menschen wirtschaften hauptsächlich für den Eigenbedarf.
+            </p>
+            <ul>
+              <li>Geringe Produktivität</li>
+              <li>Kaum Marktanbindung</li>
+              <li>Armut im Hochland</li>
+            </ul>
+          `
+        },
+
+        "symbol-natural-hazards-sierra": {
+          title: "Naturgefahren",
+          html: `
+            <p>
+              Die Andenregion ist stark von Naturgefahren betroffen.
+            </p>
+            <ul>
+              <li>Erdbeben</li>
+              <li>Erdrutsche</li>
+              <li>Hemmnis für Entwicklung</li>
+            </ul>
+          `
+        },
+
+        "symbol-rainforest-selva": {
+          title: "Regenwald",
+          html: `
+            <p>
+              Der Amazonasregenwald ist ökologisch extrem wertvoll.
+            </p>
+            <ul>
+              <li>Hohe Biodiversität</li>
+              <li>Klimarelevanz</li>
+              <li>Schwer zugänglich</li>
+            </ul>
+          `
+        },
+
+        "symbol-deforestation-selva": {
+          title: "Abholzung",
+          html: `
+            <p>
+              Die Abholzung bedroht Umwelt und indigene Lebensräume.
+            </p>
+            <ul>
+              <li>Holzgewinnung</li>
+              <li>Landgewinnung</li>
+              <li>Ökologische Schäden</li>
+            </ul>
+          `
+        },
+
+        "symbol-infrastructure-weak-selva": {
+          title: "Schwache Infrastruktur",
+          html: `
+            <p>
+              Fehlende Infrastruktur erschwert Entwicklung.
+            </p>
+            <ul>
+              <li>Kaum Straßen</li>
+              <li>Schlechte Versorgung</li>
+              <li>Isolation vieler Gebiete</li>
+            </ul>
+          `
+        },
+
+        "symbol-corruption-peru": {
+          title: "Korruption & Instabilität",
+          html: `
+            <p>
+              Korruption schwächt staatliche Strukturen.
+            </p>
+            <ul>
+              <li>Fehlverwendung öffentlicher Gelder</li>
+              <li>Geringes Vertrauen in Politik</li>
+              <li>Entwicklungshemmnis</li>
+            </ul>
+          `
+        }
+      };
+
+      /* ==============================
+         FUNKTIONEN
+      ============================== */
+      function hideAllSymbols() {
+        symbols.forEach(sym => {
+          sym.classList.remove("symbol-visible");
+          sym.classList.add("symbol-hidden");
+        });
+      }
+
+      function showSymbolsForRegion(region) {
+        hideAllSymbols();
+        symbols.forEach(sym => {
+          if (sym.id.endsWith("-" + region)) {
+            sym.classList.remove("symbol-hidden");
+            sym.classList.add("symbol-visible");
+          }
+        });
+      }
+
+      function setInfo(title, html) {
+        document.getElementById("info-title").textContent = title;
+        document.getElementById("info-text").innerHTML = html;
+      }
+
+      /* ==============================
+         REGION-KLICKS
+      ============================== */
+      Object.entries(regions).forEach(([name, el]) => {
+        if (!el) return;
+
+        el.style.cursor = "pointer";
+
+        el.addEventListener("click", () => {
+          showSymbolsForRegion(name);
+          setInfo(REGION_DATA[name].title, REGION_DATA[name].html);
+        });
       });
 
-      attachTermHandlers();
+      /* ==============================
+         SYMBOL-KLICKS
+      ============================== */
+      symbols.forEach(sym => {
+        sym.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const data = SYMBOL_DATA[sym.id];
+          if (data) {
+            setInfo(data.title, data.html);
+          }
+        });
+      });
     });
-  });
-
-  symbols.forEach(sym=>{
-    sym.addEventListener("click",e=>{
-      e.stopPropagation();
-      symbols.forEach(s=>s.classList.remove("symbol-active"));
-      sym.classList.add("symbol-active");
-    });
-  });
-});
-
-/* ============================================================
-MODAL
-============================================================ */
-function attachTermHandlers(){
-  document.querySelectorAll(".term-btn").forEach(btn=>{
-    btn.onclick=()=>{
-      const t=btn.dataset.term;
-      document.getElementById("term-modal-container").innerHTML=
-        `<div class="modal-backdrop">
-          <div class="modal">
-            <h3>${t}</h3>
-            <p>${TERMS[t]}</p>
-            <button class="close" onclick="this.closest('.modal-backdrop').remove()">Schließen</button>
-          </div>
-        </div>`;
-      document.getElementById("term-modal-container").style.display="block";
-    };
-  });
-}
-</script>
+  </script>
 
 </body>
 </html>
