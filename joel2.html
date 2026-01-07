@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Peru – Raumanalyse</title>
+
+<style>
+:root{
+  --blue:#4dabf7;
+  --blue-light:#e7f5ff;
+  --sea-base:#e7f8ff;
+  --sea-hover:#d0efff;
+  --sea-active:#4dabf7;
+  --gray-base:#f3f4f6;
+  --gray-hover:#e0e3e6;
+  --gray-active:#adb5bd;
+  --green:#69db7c;
+  --green-light:#d3f9d8;
+}
+
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:var(--gray-base);
+  color:#222;
+}
+
+h1{text-align:center;margin:18px 0}
+
+#layout{
+  display:grid;
+  grid-template-columns:60% 40%;
+  gap:14px;
+  max-width:1200px;
+  margin:auto;
+  padding:14px;
+}
+
+#map-container,#info-panel{
+  background:#fff;
+  border-radius:12px;
+  padding:14px;
+  box-shadow:0 8px 22px rgba(0,0,0,0.08)
+}
+
+object{width:100%;height:640px;border:0;display:block}
+
+.section{margin-bottom:14px}
+.section h2{margin:0 0 6px;color:var(--blue);font-size:16px}
+.section p,.section li{font-size:14px;line-height:1.45}
+.section ul{padding-left:18px;margin:6px 0 0 0}
+
+.note{font-style:italic;color:#666}
+
+/* Begriffe */
+.term-btn{
+  border:0;
+  background:none;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:underline dotted;
+}
+
+/* Modal */
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999
+}
+.modal{
+  background:#fff;
+  border-radius:10px;
+  padding:16px;
+  max-width:720px;
+  width:94%
+}
+.modal button{
+  margin-top:10px;
+  padding:8px 12px;
+  border:0;
+  background:var(--blue);
+  color:#fff;
+  border-radius:8px;
+  cursor:pointer
+}
+
+/* ===== Symbole ===== */
+.symbol{
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease;
+}
+.symbol *{
+  stroke-opacity:0;
+  transition:stroke-opacity .25s ease;
+}
+.symbol-visible{
+  opacity:1;
+  pointer-events:auto;
+}
+.symbol-active *{
+  stroke-opacity:1;
+}
+</style>
+</head>
+
+<body>
+<h1>Peru – Raumanalyse</h1>
+
+<div id="layout">
+  <div id="map-container">
+    <object id="map-object" data="map.svg" type="image/svg+xml"></object>
+  </div>
+
+  <div id="info-panel">
+    <div class="section">
+      <h2>Region</h2>
+      <p id="region-name" class="note">Bitte eine Region anklicken</p>
+    </div>
+
+    <div class="section"><h2>Fakten</h2><div id="facts">—</div></div>
+    <div class="section"><h2>Naturraum & Entwicklung</h2><div id="nature">—</div></div>
+    <div class="section"><h2>Gesellschaft & Politik</h2><div id="society">—</div></div>
+    <div class="section"><h2>Weltwirtschaft</h2><div id="world">—</div></div>
+    <div class="section"><h2>Disparitäten & Probleme</h2><div id="problems">—</div></div>
+
+    <footer style="font-size:12px;color:#666">
+      Projekt: Raumanalyse Peru
+    </footer>
+  </div>
+</div>
+
+<div id="term-modal-container"></div>
+
+<script>
+/* ================= Begriffe ================= */
+const TERMS = {
+  "Korruption":"Missbrauch anvertrauter Macht zum privaten Vorteil.",
+  "Bad Governance":"Schlechte Regierungsführung ohne Transparenz.",
+  "Subsistenzwirtschaft":"Landwirtschaft zur Eigenversorgung.",
+  "Terms of Trade":"Preisverhältnis von Exporten zu Importen.",
+  "Landflucht":"Abwanderung vom Land in Städte."
+};
+
+/* ================= Regionen ================= */
+const REGION_DATA = {
+  costa:{
+    name:"Costa (Küste)",
+    facts:"<ul><li>Wirtschaftszentrum mit Lima</li></ul>",
+    nature:"<ul><li>Trockene Küste, Humboldtstrom</li></ul>",
+    society:"<ul><li>Industrie & Exportlandwirtschaft</li></ul>",
+    world:"<ul><li>Starke Hafenanbindung</li></ul>",
+    problems:"<ul><li>Wasserknappheit</li></ul>"
+  },
+  sierra:{
+    name:"Sierra (Anden)",
+    facts:"<ul><li>Hochland & Bergbau</li></ul>",
+    nature:"<ul><li>Steiles Relief</li></ul>",
+    society:"<ul><li><button class='term-btn' data-term='Subsistenzwirtschaft'>Subsistenzwirtschaft</button></li></ul>",
+    world:"<ul><li>Rohstoffexporte</li></ul>",
+    problems:"<ul><li>Armut & Landflucht</li></ul>"
+  },
+  selva:{
+    name:"Selva (Amazonas)",
+    facts:"<ul><li>Regenwaldgebiet</li></ul>",
+    nature:"<ul><li>Hohe Biodiversität</li></ul>",
+    society:"<ul><li>Indigene Gruppen</li></ul>",
+    world:"<ul><li>Rohstoffgewinnung</li></ul>",
+    problems:"<ul><li>Abholzung & <button class='term-btn' data-term='Korruption'>Korruption</button></li></ul>"
+  }
+};
+
+/* ================= SVG ================= */
+const mapObject = document.getElementById("map-object");
+
+mapObject.addEventListener("load",()=>{
+  const svg = mapObject.contentDocument;
+  if(!svg) return;
+
+  const regions = ["costa","sierra","selva"];
+  const symbols = svg.querySelectorAll('[id^="symbol-"]');
+
+  symbols.forEach(s=>{
+    s.classList.add("symbol");
+    s.style.fill="#333";
+  });
+
+  regions.forEach(r=>{
+    const el = svg.getElementById(r);
+    if(!el) return;
+    el.style.cursor="pointer";
+
+    el.addEventListener("click",()=>{
+      document.getElementById("region-name").textContent=REGION_DATA[r].name;
+      ["facts","nature","society","world","problems"].forEach(k=>{
+        document.getElementById(k).innerHTML=REGION_DATA[r][k];
+      });
+
+      symbols.forEach(sym=>{
+        sym.classList.remove("symbol-visible","symbol-active");
+        if(sym.id.endsWith("-"+r)) sym.classList.add("symbol-visible");
+      });
+
+      attachTermHandlers();
+    });
+  });
+
+  symbols.forEach(sym=>{
+    sym.addEventListener("click",e=>{
+      e.stopPropagation();
+      symbols.forEach(s=>s.classList.remove("symbol-active"));
+      sym.classList.add("symbol-active");
+    });
+  });
+});
+
+/* ================= Begriffs-Modal ================= */
+function attachTermHandlers(){
+  document.querySelectorAll(".term-btn").forEach(b=>{
+    b.onclick=()=>{
+      const term=b.dataset.term;
+      document.getElementById("term-modal-container").innerHTML=
+        `<div class="modal-backdrop">
+          <div class="modal">
+            <h3>${term}</h3>
+            <p>${TERMS[term]}</p>
+            <button onclick="this.closest('.modal-backdrop').remove()">Schließen</button>
+          </div>
+        </div>`;
+    };
+  });
+}
+</script>
+</body>
+</html>
