@@ -15,15 +15,17 @@
   --gray-base:#f3f4f6;
   --gray-hover:#e0e3e6;
   --gray-active:#adb5bd;
+  --sand:#ffd43b;
   --green:#69db7c;
   --green-light:#d3f9d8;
+  --jungle:#2f9e44;
 }
 
 body{
   margin:0;
   font-family:Arial,Helvetica,sans-serif;
   background:var(--gray-base);
-  color:#222;
+  color:#222
 }
 
 h1{text-align:center;margin:18px 0}
@@ -34,7 +36,7 @@ h1{text-align:center;margin:18px 0}
   gap:14px;
   max-width:1200px;
   margin:auto;
-  padding:14px;
+  padding:14px
 }
 
 #map-container,#info-panel{
@@ -44,166 +46,243 @@ h1{text-align:center;margin:18px 0}
   box-shadow:0 8px 22px rgba(0,0,0,0.08)
 }
 
-object{width:100%;height:640px;border:0;display:block}
+object{
+  width:100%;
+  height:640px;
+  border:0;
+  display:block
+}
 
 .section{margin-bottom:14px}
 .section h2{margin:0 0 6px;color:var(--blue);font-size:16px}
 .section p,.section li{font-size:14px;line-height:1.45}
 .section ul{padding-left:18px;margin:6px 0 0 0}
-
 .note{font-style:italic;color:#666}
 
-/* Begriffe */
+/* klickbare begriffe */
 .term-btn{
+  display:inline-block;
   border:0;
-  background:none;
+  background:transparent;
+  padding:0;
+  margin:0 2px;
   font-weight:700;
   cursor:pointer;
   text-decoration:underline dotted;
 }
 
-/* Modal */
+/* modal */
 .modal-backdrop{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.45);
+  background:rgba(0,0,0,0.45);
   display:flex;
   align-items:center;
   justify-content:center;
   z-index:9999
 }
+
 .modal{
   background:#fff;
   border-radius:10px;
   padding:16px;
   max-width:720px;
-  width:94%
+  width:94%;
+  box-shadow:0 14px 40px rgba(0,0,0,0.25)
 }
-.modal button{
-  margin-top:10px;
+
+.modal h3{margin:0 0 8px}
+.modal p{margin:0 0 8px}
+
+.modal .close{
+  display:inline-block;
+  margin-top:12px;
   padding:8px 12px;
-  border:0;
+  border-radius:8px;
   background:var(--blue);
   color:#fff;
-  border-radius:8px;
+  border:0;
   cursor:pointer
 }
 
-/* ===== Symbole ===== */
+footer{font-size:12px;color:#666;margin-top:8px}
+
+/* ========================= Symbole (SVG) ========================= */
 .symbol{
   opacity:0;
-  pointer-events:none;
-  transition:opacity .25s ease;
+  transition:opacity 0.25s ease;
+  pointer-events:none
 }
+
 .symbol *{
   stroke-opacity:0;
-  transition:stroke-opacity .25s ease;
+  transition:stroke-opacity 0.25s ease, stroke 0.25s ease
 }
+
 .symbol-visible{
   opacity:1;
-  pointer-events:auto;
+  pointer-events:auto
 }
+
 .symbol-active *{
-  stroke-opacity:1;
+  stroke-opacity:1
 }
 </style>
 </head>
 
 <body>
+
 <h1>Peru – Raumanalyse</h1>
 
 <div id="layout">
-  <div id="map-container">
-    <object id="map-object" data="map.svg" type="image/svg+xml"></object>
-  </div>
 
-  <div id="info-panel">
-    <div class="section">
-      <h2>Region</h2>
-      <p id="region-name" class="note">Bitte eine Region anklicken</p>
-    </div>
-
-    <div class="section"><h2>Fakten</h2><div id="facts">—</div></div>
-    <div class="section"><h2>Naturraum & Entwicklung</h2><div id="nature">—</div></div>
-    <div class="section"><h2>Gesellschaft & Politik</h2><div id="society">—</div></div>
-    <div class="section"><h2>Weltwirtschaft</h2><div id="world">—</div></div>
-    <div class="section"><h2>Disparitäten & Probleme</h2><div id="problems">—</div></div>
-
-    <footer style="font-size:12px;color:#666">
-      Projekt: Raumanalyse Peru
-    </footer>
-  </div>
+<div id="map-container">
+  <object id="map-object" data="map.svg" type="image/svg+xml"></object>
 </div>
 
-<div id="term-modal-container"></div>
+<div id="info-panel">
+
+<div class="section">
+<h2>Region</h2>
+<p id="region-name" class="note">
+Bitte eine Region anklicken (STRG für Mehrfachauswahl)
+</p>
+</div>
+
+<div class="section"><h2>Fakten</h2><div id="facts">—</div></div>
+<div class="section"><h2>Naturraum & Entwicklung</h2><div id="nature">—</div></div>
+<div class="section"><h2>Gesellschaft & Politik</h2><div id="society">—</div></div>
+<div class="section"><h2>Weltwirtschaft</h2><div id="world">—</div></div>
+<div class="section"><h2>Disparitäten & Probleme</h2><div id="problems">—</div></div>
+
+<footer>
+Projekt: Raumanalyse Peru von Lasse, Leon, Lille und Mark
+</footer>
+
+</div>
+</div>
+
+<div id="term-modal-container" style="display:none"></div>
 
 <script>
-/* ================= Begriffe ================= */
+/* ============================================================
+BEGRIFFE & DEFINITIONEN
+============================================================ */
 const TERMS = {
-  "Korruption":"Missbrauch anvertrauter Macht zum privaten Vorteil.",
-  "Bad Governance":"Schlechte Regierungsführung ohne Transparenz.",
-  "Subsistenzwirtschaft":"Landwirtschaft zur Eigenversorgung.",
-  "Terms of Trade":"Preisverhältnis von Exporten zu Importen.",
-  "Landflucht":"Abwanderung vom Land in Städte."
+  "Bad Governance":
+    "Schlechte Regierungsführung: Staatliche Institutionen funktionieren nicht effizient oder gerecht; es fehlen Transparenz, Rechenschaftspflicht und langfristige Planung.",
+  "Korruption":
+    "Missbrauch anvertrauter Macht zum privaten Vorteil (z. B. Bestechung, Vetternwirtschaft).",
+  "Subsistenzwirtschaft":
+    "Landwirtschaftliche Wirtschaftsform zur Eigenversorgung.",
+  "Terms of Trade":
+    "Austauschverhältnis zwischen Export- und Importpreisen.",
+  "Fragmentierung":
+    "Räumliche oder soziale Zersplitterung.",
+  "Landflucht":
+    "Abwanderung vom Land in Städte."
 };
 
-/* ================= Regionen ================= */
+/* ============================================================
+REGIONSDATEN (INHALT UNGEKÜRZT)
+============================================================ */
 const REGION_DATA = {
+  peru:{
+    name:"Peru (zusammengefasst)",
+    facts:`<ul>
+      <li><strong>Lage:</strong> West-Südamerika, Pazifikküste</li>
+      <li><strong>Bevölkerung:</strong> Küstenzentriert</li>
+      <li><strong>Wirtschaft:</strong> Rohstoffe & Agrar-Exporte</li>
+    </ul>`,
+    nature:`<ul>
+      <li>Dreiteilung: Costa – Sierra – Selva</li>
+      <li>Hohe Naturrisiken</li>
+    </ul>`,
+    society:`<ul>
+      <li>Starke soziale Disparitäten</li>
+      <li>Landflucht</li>
+    </ul>`,
+    world:`<ul>
+      <li>Stark in den Welthandel eingebunden</li>
+    </ul>`,
+    problems:`<ul>
+      <li><button class="term-btn" data-term="Bad Governance">Bad Governance</button></li>
+      <li><button class="term-btn" data-term="Korruption">Korruption</button></li>
+    </ul>`
+  },
+
   costa:{
     name:"Costa (Küste)",
-    facts:"<ul><li>Wirtschaftszentrum mit Lima</li></ul>",
-    nature:"<ul><li>Trockene Küste, Humboldtstrom</li></ul>",
-    society:"<ul><li>Industrie & Exportlandwirtschaft</li></ul>",
-    world:"<ul><li>Starke Hafenanbindung</li></ul>",
-    problems:"<ul><li>Wasserknappheit</li></ul>"
+    facts:`<ul><li>Lima als Metropole</li></ul>`,
+    nature:`<ul><li>Humboldtstrom</li></ul>`,
+    society:`<ul><li>Exportlandwirtschaft</li></ul>`,
+    world:`<ul><li>Häfen & Handel</li></ul>`,
+    problems:`<ul><li>Wasserknappheit</li></ul>`
   },
+
   sierra:{
     name:"Sierra (Anden)",
-    facts:"<ul><li>Hochland & Bergbau</li></ul>",
-    nature:"<ul><li>Steiles Relief</li></ul>",
-    society:"<ul><li><button class='term-btn' data-term='Subsistenzwirtschaft'>Subsistenzwirtschaft</button></li></ul>",
-    world:"<ul><li>Rohstoffexporte</li></ul>",
-    problems:"<ul><li>Armut & Landflucht</li></ul>"
+    facts:`<ul><li>Bergbau</li></ul>`,
+    nature:`<ul><li>Steiles Relief</li></ul>`,
+    society:`<ul>
+      <li><button class="term-btn" data-term="Subsistenzwirtschaft">Subsistenzwirtschaft</button></li>
+    </ul>`,
+    world:`<ul><li>Rohstoffexporte</li></ul>`,
+    problems:`<ul><li>Landflucht</li></ul>`
   },
+
   selva:{
     name:"Selva (Amazonas)",
-    facts:"<ul><li>Regenwaldgebiet</li></ul>",
-    nature:"<ul><li>Hohe Biodiversität</li></ul>",
-    society:"<ul><li>Indigene Gruppen</li></ul>",
-    world:"<ul><li>Rohstoffgewinnung</li></ul>",
-    problems:"<ul><li>Abholzung & <button class='term-btn' data-term='Korruption'>Korruption</button></li></ul>"
+    facts:`<ul><li>Regenwald</li></ul>`,
+    nature:`<ul><li>Biodiversität</li></ul>`,
+    society:`<ul><li>Indigene Gruppen</li></ul>`,
+    world:`<ul><li>Rohstoffgewinnung</li></ul>`,
+    problems:`<ul>
+      <li>Abholzung</li>
+      <li><button class="term-btn" data-term="Korruption">Korruption</button></li>
+    </ul>`
   }
 };
 
-/* ================= SVG ================= */
+/* ============================================================
+SVG & SYMBOL-LOGIK
+============================================================ */
 const mapObject = document.getElementById("map-object");
 
 mapObject.addEventListener("load",()=>{
   const svg = mapObject.contentDocument;
   if(!svg) return;
 
-  const regions = ["costa","sierra","selva"];
+  const regions = ["costa","sierra","selva","peru"];
   const symbols = svg.querySelectorAll('[id^="symbol-"]');
 
-  symbols.forEach(s=>{
-    s.classList.add("symbol");
-    s.style.fill="#333";
+  symbols.forEach(sym=>{
+    sym.classList.add("symbol");
+    sym.querySelectorAll("*").forEach(el=>{
+      el.style.fill="#333";
+    });
   });
 
   regions.forEach(r=>{
     const el = svg.getElementById(r);
     if(!el) return;
+
     el.style.cursor="pointer";
 
     el.addEventListener("click",()=>{
-      document.getElementById("region-name").textContent=REGION_DATA[r].name;
+      const d = REGION_DATA[r];
+      if(!d) return;
+
+      document.getElementById("region-name").textContent=d.name;
       ["facts","nature","society","world","problems"].forEach(k=>{
-        document.getElementById(k).innerHTML=REGION_DATA[r][k];
+        document.getElementById(k).innerHTML=d[k];
       });
 
-      symbols.forEach(sym=>{
-        sym.classList.remove("symbol-visible","symbol-active");
-        if(sym.id.endsWith("-"+r)) sym.classList.add("symbol-visible");
+      symbols.forEach(s=>{
+        s.classList.remove("symbol-visible","symbol-active");
+        if(s.id.endsWith("-"+r)){
+          s.classList.add("symbol-visible");
+        }
       });
 
       attachTermHandlers();
@@ -219,22 +298,26 @@ mapObject.addEventListener("load",()=>{
   });
 });
 
-/* ================= Begriffs-Modal ================= */
+/* ============================================================
+MODAL
+============================================================ */
 function attachTermHandlers(){
-  document.querySelectorAll(".term-btn").forEach(b=>{
-    b.onclick=()=>{
-      const term=b.dataset.term;
+  document.querySelectorAll(".term-btn").forEach(btn=>{
+    btn.onclick=()=>{
+      const t=btn.dataset.term;
       document.getElementById("term-modal-container").innerHTML=
         `<div class="modal-backdrop">
           <div class="modal">
-            <h3>${term}</h3>
-            <p>${TERMS[term]}</p>
-            <button onclick="this.closest('.modal-backdrop').remove()">Schließen</button>
+            <h3>${t}</h3>
+            <p>${TERMS[t]}</p>
+            <button class="close" onclick="this.closest('.modal-backdrop').remove()">Schließen</button>
           </div>
         </div>`;
+      document.getElementById("term-modal-container").style.display="block";
     };
   });
 }
 </script>
+
 </body>
 </html>
