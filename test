@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Peru – Raumanalyse</title>
+<style>
+  :root{
+    --blue:#4dabf7;
+    --blue-light:#e7f5ff;
+    --sea-base:#e7f8ff;
+    --sea-hover:#d0efff;
+    --sea-active:#4dabf7;
+    --gray-base:#f3f4f6;
+    --gray-hover:#e0e3e6;
+    --gray-active:#adb5bd;
+    --sand:#ffd43b;
+    --green:#69db7c;
+    --green-light:#d3f9d8;
+    --jungle:#2f9e44;
+  }
+
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--gray-base);color:#222}
+  h1{text-align:center;margin:18px 0}
+  #layout{display:grid;grid-template-columns:60% 40%;gap:14px;max-width:1200px;margin:auto;padding:14px}
+  #map-container,#info-panel{background:#fff;border-radius:12px;padding:14px;box-shadow:0 8px 22px rgba(0,0,0,0.08)}
+  object{width:100%;height:640px;border:0;display:block}
+  .section{margin-bottom:14px}
+  .section h2{margin:0 0 6px;color:var(--blue);font-size:16px}
+  .section p,.section li{font-size:14px;line-height:1.45}
+  .section ul{padding-left:18px;margin:6px 0 0 0}
+  .note{font-style:italic;color:#666}
+
+  /* klickbare begriffe */
+  .term-btn{
+    display:inline-block;border:0;background:transparent;padding:0;margin:0 2px;font-weight:700;color:inherit;cursor:pointer;text-decoration:underline dotted;
+  }
+  .term-btn:focus{outline:2px solid rgba(0,0,0,0.08);border-radius:3px}
+
+  /* modal */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .modal{background:#fff;border-radius:10px;padding:16px;max-width:720px;width:94%;box-shadow:0 14px 40px rgba(0,0,0,0.25)}
+  .modal h3{margin:0 0 8px}
+  .modal p{margin:0 0 8px}
+  .modal .close{display:inline-block;margin-top:12px;padding:8px 12px;border-radius:8px;background:var(--blue);color:#fff;border:0;cursor:pointer}
+
+  footer{font-size:12px;color:#666;margin-top:8px}
+  @media (max-width:900px){#layout{grid-template-columns:1fr} object{height:520px}}
+</style>
+</head>
+<body>
+<h1>Peru – Raumanalyse</h1>
+
+<div id="layout">
+  <!-- MAP -->
+  <div id="map-container">
+    
+    <object id="map-object" data="map.svg" type="image/svg+xml"></object>
+  </div>
+
+  <!-- INFO PANEL -->
+  <div id="info-panel">
+    <div class="section">
+      <h2>Region</h2>
+      <p id="region-name" class="note">Bitte eine Region anklicken (STRG für Mehrfachauswahl)</p>
+    </div>
+
+    <div class="section">
+      <h2>Fakten</h2>
+      <div id="facts">—</div>
+    </div>
+
+    <div class="section">
+      <h2>Naturraum & Entwicklung</h2>
+      <div id="nature">—</div>
+    </div>
+
+    <div class="section">
+      <h2>Gesellschaft & Politik</h2>
+      <div id="society">—</div>
+    </div>
+
+    <div class="section">
+      <h2>Weltwirtschaft</h2>
+      <div id="world">—</div>
+    </div>
+
+    <div class="section">
+      <h2>Disparitäten & Probleme</h2>
+      <div id="problems">—</div>
+    </div>
+
+    <footer>Projekt: Raumanalyse Peru von Lasse, Leon, Lille und Mark</footer>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="term-modal-container" style="display:none"></div>
+
+<script>
+/* ============================================================
+   EDITABLE: Begriffe & Definitionen (leicht änderbar)
+   ============================================================ */
+const TERMS = {
+  "Bad Governance": "Schlechte Regierungsführung: Staatliche Institutionen funktionieren nicht effizient oder gerecht; es fehlen Transparenz, Rechenschaftspflicht und langfristige Planung.",
+  "Korruption": "Das heißt Bestechlichkeit oder Verderbtheit. Korruption ist der Missbrauch anvertrauter Macht zum privaten Vorteil. Dabei werden andere Personen benachteiligt oder geschädigt.",
+  "Subsistenzwirtschaft": "Damit bezeichnet man eine Wirtschaftsform in der Landwirtschaft, die nur der Eigenversorgung dient. Sie ist in den Entwicklungsländern verbreitet.",
+  "Terms of Trade": "Austauschverhältnis zwischen Preisen von Export- und Importgütern eines Landes; verschlechternde Terms of Trade reduzieren die Kaufkraft der Exporteinnahmen.",
+  "Fragmentierung": "Räumliche oder soziale Zersplitterung (z. B. unterschiedliche Infrastruktur und Zugang zu Diensten), die koordinierte Entwicklung erschwert.",
+  "Landflucht": "Migration vom ländlichen Raum in städtische Zentren – oft ausgelöst durch fehlende Perspektiven, Arbeitsplätze oder Infrastruktur."
+};
+
+
+const REGION_DATA = {
+  /* PERU — umfassende, kombinierte Beschreibung (wird angezeigt wenn
+     per-SVG selektiert oder alle drei Unterregionen ausgewählt sind) */
+  peru: {
+    name: "Peru (zusammengefasst)",
+    facts: `
+      <ul>
+        <li><strong>Lage:</strong> West-Südamerika, mit langer Pazifikküste; Nachbarstaaten: Ecuador, Kolumbien, Brasilien, Bolivien, Chile.</li>
+        <li><strong>Bevölkerung:</strong> Stark urbanisiert an der Küste (insbesondere Lima). Die Selva ist dünn besiedelt, die Sierra weist viele Kleinsiedlungen und indigene Gemeinden auf.</li>
+        <li><strong>Wirtschaft:</strong> Bedeutende Rohstoffexporte (Kupfer, Silber, Zink), exportorientierte Landwirtschaft an der Küste und wachsender Tourismussektor.</li>
+      </ul>
+    `,
+    nature: `
+      <ul>
+        <li>Peru zeigt eine deutliche Dreiteilung: <strong>Costa</strong> (trockene Küste), <strong>Sierra</strong> (Anden/Hochland) und <strong>Selva</strong> (amazonisches Tiefland).</li>
+        <li>Große Höhenunterschiede führen zu extrem unterschiedlichen Klimata und Nutzungsformen auf engem Raum.</li>
+        <li>Naturrisiken: Erdbeben, Erdrutsche, Überschwemmungen — sie beeinträchtigen Infrastruktur und Entwicklung.</li>
+      </ul>
+    `,
+    society: `
+      <ul>
+        <li>Historisch wurden Infrastruktur und Verwaltung auf die Küste und Lima konzentriert; viele Andenregionen blieben abgekoppelt.</li>
+        <li>Landflucht ist weit verbreitet: Junge Menschen ziehen in die Städte, was in den Städten zu Slumbildung und sozialen Problemen führt.</li>
+        <li>Soziale Disparitäten sind deutlich sichtbar: indigene Bevölkerungsgruppen im Hochland sind häufig benachteiligt.</li>
+      </ul>
+    `,
+    world: `
+      <ul>
+        <li>Peru ist stark in den Welthandel eingebunden – vor allem über Bergbauexporte und Agrarprodukte.</li>
+        <li>Chancen: hohe Exporterlöse durch Rohstoffe und touristische Attraktionen (Machu Picchu, Amazonastourismus).</li>
+        <li>Risiken: Preisschwankungen auf den Weltmärkten, Abhängigkeit von wenigen Exportgütern und geringe lokale Weiterverarbeitung.</li>
+      </ul>
+    `,
+    problems: `
+      <ul>
+        <li>Strukturelle Probleme wie <button class="term-btn" data-term="Bad Governance"><strong>Bad Governance</strong></button> und <button class="term-btn" data-term="Korruption"><strong>Korruption</strong></button> führen zu ineffizienter Mittelverwendung.</li>
+        <li>Unzureichende Diversifikation der Wirtschaft macht das Land anfällig für globale Preisschwankungen (<button class="term-btn" data-term="Terms of Trade"><strong>Terms of Trade</strong></button>).</li>
+        <li>Regionale Disparitäten: Wohlstand konzentriert an der Küste, Sierra und Selva profitieren weniger von Investitionen.</li>
+      </ul>
+    `
+  },
+
+  /* COSTA — ausführlich */
+  costa: {
+    name: "Costa (Küste)",
+    facts: `
+      <ul>
+        <li>Die Costa ist ein schmaler Küstenstreifen am Pazifik; klimatisch überwiegend trocken bis wüstenhaft.</li>
+        <li>Wichtige Städte: Lima (Hauptstadt), Piura, Chiclayo wirtschaftliche und politische Zentren.</li>
+      </ul>
+    `,
+    nature: `
+      <ul>
+        <li>Die Küste ist stark vom Humboldtstrom beeinflusst, was reiche Fischgründe, aber eine sehr trockene Landfläche zur Folge hat.</li>
+        <li>Geringe Niederschläge, lokale Oasen durch Bewässerungswirtschaft.</li>
+      </ul>
+    `,
+    society: `
+      <ul>
+        <li>An der Küste konzentrieren sich Industrie, Dienstleistungen und gehobene Landwirtschaft (Export von Spargel, Blaubeeren, Zitrusfrüchten).</li>
+        <li>Die Costa zieht viele Migranten aus der Sierra und Selva an Folge: Urbanisierung, informelle Siedlungen, Druck auf Infrastruktur.</li>
+      </ul>
+    `,
+    world: `
+      <ul>
+        <li>Gute Hafeninfrastruktur ermöglicht Exporte; stark in globalen Agrar und Fischmärkten vernetzt.</li>
+        <li>Die Küste profitiert am stärksten von Außeninvestitionen und Exportmöglichkeiten.</li>
+      </ul>
+    `,
+    problems: `
+      <ul>
+        <li>Wasserknappheit (konkurrierende Nutzung für Landwirtschaft, Industrie und Städte).</li>
+        <li>Stark wachsende Städte leiden unter Wohnungsnot, Verkehrsproblemen und Umweltverschmutzung.</li>
+      </ul>
+    `
+  },
+
+  /* SIERRA — ausführlich (hover: hellgrün) */
+  sierra: {
+    name: "Sierra (Anden)",
+    facts: `
+      <ul>
+        <li>Die Sierra besteht aus dem Andenhochland mit starken Höhenunterschieden, Terrassenanbau und traditionellen Dorfgemeinschaften.</li>
+        <li>Große Teile sind nur schwer erreichbar; Straßen und Energieversorgungen sind lückenhaft.</li>
+      </ul>
+    `,
+    nature: `
+      <ul>
+        <li>Kühle bis kalte Klimazonen mit stark variierenden Böden; Erosion und steile Hänge sind problematisch.</li>
+        <li>Hohe Artenvielfalt in bestimmten Andenökosystemen; jedoch schwierige landwirtschaftliche Bedingungen.</li>
+      </ul>
+    `,
+    society: `
+      <ul>
+        <li>Viele Haushalte betreiben <button class="term-btn" data-term="Subsistenzwirtschaft"><strong>Subsistenzwirtschaft</strong></button> — Produktion primär für Eigenbedarf.</li>
+        <li>Gemeinschaften von Ureinwohnern prägen Kultur und soziale Strukturen; oft eingeschränkter Zugang zu staatlichen Diensten.</li>
+      </ul>
+    `,
+    world: `
+      <ul>
+        <li>Bergbau in den Anden trägt erheblich zu Exporten bei, doch die lokale Wertschöpfung (Verarbeitung) bleibt begrenzt.</li>
+        <li>Exporte aus der Sierra können regionalen Wohlstand bringen, führen aber nicht automatisch zu breiter Entwicklung.</li>
+      </ul>
+    `,
+    problems: `
+      <ul>
+        <li>Mangelnde Infrastruktur, Armut und Abwanderung in die Städte (Landflucht) sind weit verbreitet.</li>
+        <li>Soziale Benachteiligung von Ureinwohnern und eingeschränkter Zugang zu Gesundheitsversorgung und Bildung.</li>
+      </ul>
+    `
+  },
+
+  /* SELVA — ausführlich */
+  selva: {
+    name: "Selva (Amazonas)",
+    facts: `
+      <ul>
+        <li>Weite Flächen tropischen Tieflands mit dichtem Regenwald; große Artenvielfalt, zahlreiche Flüsse.</li>
+        <li>Wichtig für Ökosystemleistungen (Kohlenstoffspeicherung, Wasserkreislauf).</li>
+      </ul>
+    `,
+    nature: `
+      <ul>
+        <li>Hotspot für Artenvielfalt; hohe Niederschläge und warme Temperaturen.</li>
+        <li>Große Flächen sind schwer zugänglich, viele Gebiete ohne feste Straßenanbindung.</li>
+      </ul>
+    `,
+    society: `
+      <ul>
+        <li>Geringe Bevölkerungsdichte; zahlreiche Ureinwohner mit traditionellen Lebensweisen.</li>
+        <li>Problemfelder: Konflikte um Landrechte, zunehmender Straßenbau führt zu Fragmentierung der Lebensräume.</li>
+      </ul>
+    `,
+    world: `
+      <ul>
+        <li>Rohstoffgewinnung (z. B. Holz, Öl) ist wirtschaftlich bedeutsam, oft mit geringer Verarbeitung vor Ort.</li>
+        <li>Ökologische Bedeutung für globales Klima macht nachhaltige Nutzung relevant für internationale Politik.</li>
+      </ul>
+    `,
+    problems: `
+      <ul>
+        <li>Abholzung, Landkonflikte, oft schwache staatliche Präsenz; lokale <button class="term-btn" data-term="Korruption"><strong>Korruption</strong></button> kann Probleme verschärfen.</li>
+        <li>Infrastrukturprojekte bringen kurzfristige Jobs, aber lange Konflikte wegen Umwelt und Sozialfragen.</li>
+      </ul>
+    `
+  },
+
+  /* SEA & OTHER — ausführlichere Kurztexte */
+  sea: {
+    name: "Meer (Pazifik)",
+    facts:`<ul><li>Der Humboldtstrom sorgt für nährstoffreiches Wasser und ergiebige Fischgründe.</li></ul>`,
+    nature:`<ul><li>Küstenökosysteme sind Basis für Fischerei und Küstenschutz.</li></ul>`,
+    society:`<ul><li>Fischereigemeinden, Häfen und Seehandel sind wirtschaftlich wichtig.</li></ul>`,
+    world:`<ul><li>Export von Fischprodukten; Küste verbindet Peru mit internationalen Handelsrouten.</li></ul>`,
+    problems:`<ul><li>Überfischung, Meeresverschmutzung und Klimafolgen (z. B. El Niño) gefährden Erträge.</li></ul>`
+  },
+
+  other: {
+    name: "Nachbarländer / Welt",
+    facts:`<ul><li>Peru grenzt an Ecuador, Kolumbien, Brasilien, Bolivien und Chile wichtige regionale Beziehungen.</li></ul>`,
+    nature:`<ul><li>Grenzregionen weisen Übergangslandschaften auf (z. B. Andenausläufer, Amazonas-Übergang).</li></ul>`,
+    society:`<ul><li>Grenzhandel, Migration und kultureller Austausch prägen Lebens- und Wirtschaftsformen.</li></ul>`,
+    world:`<ul><li>Internationale Handelsbeziehungen (auch zu China, USA, EU) prägen die Exportorientierung.</li></ul>`,
+    problems:`<ul><li>Umweltprobleme, die mehrere Länder betreffen, Handelsabhängigkeiten und geopolitische Einflüsse.</li></ul>`
+  }
+};
+
+/* ============================================================
+   Farben / ID Zuordnung / Interaktion (nicht nötig zu ändern)
+   ============================================================ */
+const COLORS = {
+  costa: { base:"rgba(0,0,0,0.01)", hover:"#fff3bf", active:"#ffd43b" },
+  sierra:{ base:"rgba(0,0,0,0.01)", hover: getComputedStyle(document.documentElement).getPropertyValue('--green-light') || "#d3f9d8", active:"#69db7c" },
+  selva: { base:"rgba(0,0,0,0.01)", hover:"#c3fae8", active:"#2f9e44" },
+  peru:  { base:"#ffffff", hover:"#e7f5ff", active:"#4dabf7" },
+  sea:   { base: getComputedStyle(document.documentElement).getPropertyValue('--sea-base') || "#e7f8ff", hover: getComputedStyle(document.documentElement).getPropertyValue('--sea-hover') || "#d0efff", active: getComputedStyle(document.documentElement).getPropertyValue('--sea-active') || "#4dabf7" },
+  other: { base: getComputedStyle(document.documentElement).getPropertyValue('--gray-base') || "#f3f4f6", hover: getComputedStyle(document.documentElement).getPropertyValue('--gray-hover') || "#e0e3e6", active: getComputedStyle(document.documentElement).getPropertyValue('--gray-active') || "#adb5bd" }
+};
+
+const ID_MAP = {
+  'peru':'peru','costa':'costa','sierra':'sierra','selva':'selva','sea':'sea',
+  'other_countries':'other','other_contries':'other','other':'other'
+};
+
+const mapObject = document.getElementById('map-object');
+let activeRegions = new Set();
+let svgRegions = [];
+
+  
+function applyFill(el, color){
+  if(!el) return;
+  el.style.setProperty('fill', color, 'important');
+  el.style.setProperty('fill-opacity', '1', 'important');
+  el.style.setProperty('pointer-events', 'all', 'important');
+}
+
+
+function setState(el,key,state){
+  const col = COLORS[key] && COLORS[key][state];
+  if(col) applyFill(el, col);
+}
+
+
+function toggleSelect(el){
+  const key = el.dataset.key || 'peru';
+  if(activeRegions.has(el)){
+    activeRegions.delete(el);
+    setState(el,key,'base');
+  } else {
+    activeRegions.add(el);
+    setState(el,key,'active');
+  }
+}
+
+
+function clearSelections(){
+  activeRegions.forEach(r=>{
+    const k = r.dataset.key || 'peru';
+    setState(r,k,'base');
+  });
+  activeRegions.clear();
+}
+
+/* Update right panel with special-case handling:
+   if 'peru' selected OR all of costa+sierra+selva selected -> show ONLY REGION_DATA.peru */
+function updateRightPanel(){
+  const keysInOrder = Array.from(activeRegions).map(el => el.dataset.key).filter(Boolean);
+  const uniqueKeys = Array.from(new Set(keysInOrder));
+
+  if(uniqueKeys.length === 0){
+    document.getElementById('region-name').textContent = 'Bitte eine Region anklicken (STRG für Mehrfachauswahl)';
+    ['facts','nature','society','world','problems'].forEach(id=>document.getElementById(id).innerHTML='—');
+    return;
+  }
+
+  
+  const parts = ['costa','sierra','selva'];
+  const hasAllParts = parts.every(p => uniqueKeys.includes(p));
+  if(uniqueKeys.includes('peru') || hasAllParts){
+    const d = REGION_DATA['peru'];
+    document.getElementById('region-name').textContent = d.name;
+    document.getElementById('facts').innerHTML = d.facts;
+    document.getElementById('nature').innerHTML = d.nature;
+    document.getElementById('society').innerHTML = d.society;
+    document.getElementById('world').innerHTML = d.world;
+    document.getElementById('problems').innerHTML = d.problems;
+    attachTermHandlers(document.getElementById('info-panel'));
+    return;
+  }
+
+  
+  document.getElementById('region-name').textContent = uniqueKeys.map(k => REGION_DATA[k] && REGION_DATA[k].name ? REGION_DATA[k].name : k).join(', ');
+  document.getElementById('facts').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].facts : '').join('');
+  document.getElementById('nature').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].nature : '').join('');
+  document.getElementById('society').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].society : '').join('');
+  document.getElementById('world').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].world : '').join('');
+  document.getElementById('problems').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].problems : '').join('');
+  attachTermHandlers(document.getElementById('info-panel'));
+}
+
+
+function initSvgInteractions(svg){
+  if(!svg) return;
+  svgRegions = [];
+  Object.keys(ID_MAP).forEach(id=>{
+    const el = svg.querySelector('#'+id);
+    if(!el) return;
+    const key = ID_MAP[id];
+    el.classList.add('region');
+    el.dataset.key = key;
+    el.style.cursor = 'pointer';
+    el.style.pointerEvents = 'all';
+    setState(el,key,'base');
+    svgRegions.push(el);
+  });
+
+  svgRegions.forEach(el=>{
+    const key = el.dataset.key || 'peru';
+    el.addEventListener('mouseenter', (ev)=>{
+      if(activeRegions.has(el)) return;
+      setState(el,key,'hover');
+    });
+    el.addEventListener('mouseleave', (ev)=>{
+      if(activeRegions.has(el)) return;
+      setState(el,key,'base');
+    });
+
+    el.addEventListener('click', (ev)=>{
+      ev.preventDefault();
+      if(ev.ctrlKey){
+        let hits = [];
+        try {
+          const doc = svg.ownerDocument;
+          hits = doc.elementsFromPoint(ev.clientX, ev.clientY).filter(n => n.classList && n.classList.contains('region'));
+        } catch(e){
+          const x=ev.clientX,y=ev.clientY;
+          hits = svgRegions.filter(r=>{
+            const rect = r.getBoundingClientRect();
+            return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom;
+          });
+        }
+        hits.forEach(h => toggleSelect(h));
+      } else {
+        const already = activeRegions.has(el);
+        clearSelections();
+        if(!already){
+          toggleSelect(el);
+        }
+      }
+      updateRightPanel();
+    });
+  });
+
+  // optional: you can auto-select peru by default by uncommenting:
+  // const per = svg.querySelector('[data-key="peru"]'); if(per){ toggleSelect(per); updateRightPanel(); }
+}
+
+
+mapObject.addEventListener('load', ()=>{
+  try {
+    const svg = mapObject.contentDocument && mapObject.contentDocument.documentElement;
+    if(svg){
+      initSvgInteractions(svg);
+    } else throw new Error('no svg root');
+  } catch(e){
+    attemptFetchInline();
+  }
+});
+
+async function attemptFetchInline(){
+  try{
+    const path = mapObject.getAttribute('data') || 'joel.svg';
+    const resp = await fetch(path);
+    if(!resp.ok) throw new Error('fetch failed '+resp.status);
+    const text = await resp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text,'image/svg+xml');
+    const svgEl = doc.documentElement;
+    svgEl.id = 'inlined-map';
+    mapObject.replaceWith(svgEl);
+    initSvgInteractions(svgEl);
+  } catch(err){
+    console.error('SVG inline failed', err);
+    document.getElementById('region-name').textContent = 'SVG konnte nicht geladen werden.';
+  }
+}
+
+
+function showTermModal(term){
+  const def = TERMS[term];
+  if(!def) return alert('Keine Definition für: '+term);
+  const c = document.getElementById('term-modal-container');
+  c.innerHTML = `<div class="modal-backdrop"><div class="modal"><h3>${term}</h3><p>${def}</p><button class="close" id="close-term-modal">Schließen</button></div></div>`;
+  c.style.display='block';
+  document.getElementById('close-term-modal').addEventListener('click', ()=>{ c.innerHTML=''; c.style.display='none'; });
+  function esc(e){ if(e.key==='Escape'){ c.innerHTML=''; c.style.display='none'; document.removeEventListener('keydown',esc); } }
+  document.addEventListener('keydown',esc);
+}
+
+function attachTermHandlers(root){
+  if(!root) return;
+  const buttons = root.querySelectorAll('.term-btn');
+  buttons.forEach(b=>{
+    b.removeEventListener('click', termClick);
+    b.addEventListener('click', termClick);
+  });
+  function termClick(ev){
+    ev.preventDefault();
+    const t = ev.currentTarget.dataset.term;
+    showTermModal(t);
+  }
+}
+
+
+document.addEventListener('click',(e)=>{
+  const btn = e.target.closest && e.target.closest('.term-btn');
+  if(btn && btn.dataset && btn.dataset.term){
+    e.preventDefault();
+    showTermModal(btn.dataset.term);
+  }
+});
+</script>
+</body>
+</html>
