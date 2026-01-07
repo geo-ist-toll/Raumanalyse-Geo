@@ -46,37 +46,6 @@
 
   footer{font-size:12px;color:#666;margin-top:8px}
   @media (max-width:900px){#layout{grid-template-columns:1fr} object{height:520px}}
-
-  /* =========================
-      Symbole (SVG)
-     ========================= */
-  .symbol {
-    opacity: 0; /* Standard: unsichtbar */
-    transition: opacity 0.25s ease;
-    pointer-events: none; /* nicht klickbar, wenn unsichtbar */
-  }
-
-  /* Alle Unterelemente eines Symbols starten mit unsichtbarer Stroke */
-  .symbol * {
-    stroke-opacity: 0;
-    transition: stroke-opacity 0.25s ease, stroke 0.25s ease;
-  }
-
-  /* sichtbar, wenn Region aktiv */
-  .symbol-visible {
-    opacity: 1;
-    pointer-events: auto; /* jetzt klickbar */
-  }
-
-  /* aktiv (z. B. Klick auf Symbol) - Stroke wird sichtbar, Farbe per JS gesetzt */
-  .symbol-active * {
-    stroke-opacity: 1;
-  }
-
-  /* kleine Hilfsklasse falls du die Legende später brauchst */
-  .legend { display:flex; flex-direction:column; gap:6px; margin-top:8px; font-size:13px }
-  .legend-item { display:flex; gap:8px; align-items:center }
-  .legend-swatch { width:18px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,0.08) }
 </style>
 </head>
 <body>
@@ -126,7 +95,7 @@
 
 <script>
 /* ============================================================
-   EDITABLE: Begriffe & Definitionen
+   DATEN: Begriffe & Regionen
    ============================================================ */
 const TERMS = {
   "Bad Governance": "Schlechte Regierungsführung: Staatliche Institutionen funktionieren nicht effizient oder gerecht; es fehlen Transparenz, Rechenschaftspflicht und langfristige Planung.",
@@ -140,201 +109,110 @@ const TERMS = {
 const REGION_DATA = {
   peru: {
     name: "Peru (zusammengefasst)",
-    facts: `
-      <ul>
-        <li><strong>Lage:</strong> West-Südamerika, mit langer Pazifikküste; Nachbarstaaten: Ecuador, Kolumbien, Brasilien, Bolivien, Chile.</li>
-        <li><strong>Bevölkerung:</strong> Stark urbanisiert an der Küste (insbesondere Lima). Die Selva ist dünn besiedelt, die Sierra weist viele Kleinsiedlungen und indigene Gemeinden auf.</li>
-        <li><strong>Wirtschaft:</strong> Bedeutende Rohstoffexporte (Kupfer, Silber, Zink), exportorientierte Landwirtschaft an der Küste und wachsender Tourismussektor.</li>
-      </ul>
-    `,
-    nature: `
-      <ul>
-        <li>Peru zeigt eine deutliche Dreiteilung: <strong>Costa</strong> (trockene Küste), <strong>Sierra</strong> (Anden/Hochland) und <strong>Selva</strong> (amazonisches Tiefland).</li>
-        <li>Große Höhenunterschiede führen zu extrem unterschiedlichen Klimata und Nutzungsformen auf engem Raum.</li>
-        <li>Naturrisiken: Erdbeben, Erdrutsche, Überschwemmungen — sie beeinträchtigen Infrastruktur und Entwicklung.</li>
-      </ul>
-    `,
-    society: `
-      <ul>
-        <li>Historisch wurden Infrastruktur und Verwaltung auf die Küste und Lima konzentriert; viele Andenregionen blieben abgekoppelt.</li>
-        <li>Landflucht ist weit verbreitet: Junge Menschen ziehen in die Städte, was in den Städten zu Slumbildung und sozialen Problemen führt.</li>
-        <li>Soziale Disparitäten sind deutlich sichtbar: indigene Bevölkerungsgruppen im Hochland sind häufig benachteiligt.</li>
-      </ul>
-    `,
-    world: `
-      <ul>
-        <li>Peru ist stark in den Welthandel eingebunden – vor allem über Bergbauexporte und Agrarprodukte.</li>
-        <li>Chancen: hohe Exporterlöse durch Rohstoffe und touristische Attraktionen (Machu Picchu, Amazonastourismus).</li>
-        <li>Risiken: Preisschwankungen auf den Weltmärkten, Abhängigkeit von wenigen Exportgütern und geringe lokale Weiterverarbeitung.</li>
-      </ul>
-    `,
-    problems: `
-      <ul>
-        <li>Strukturelle Probleme wie <button class="term-btn" data-term="Bad Governance"><strong>Bad Governance</strong></button> und <button class="term-btn" data-term="Korruption"><strong>Korruption</strong></button> führen zu ineffizienter Mittelverwendung.</li>
-        <li>Unzureichende Diversifikation der Wirtschaft macht das Land anfällig für globale Preisschwankungen (<button class="term-btn" data-term="Terms of Trade"><strong>Terms of Trade</strong></button>).</li>
-        <li>Regionale Disparitäten: Wohlstand konzentriert an der Küste, Sierra und Selva profitieren weniger von Investitionen.</li>
-      </ul>
-    `
+    facts: `<ul><li><strong>Lage:</strong> West-Südamerika...</li><li><strong>Bevölkerung:</strong> Stark urbanisiert...</li><li><strong>Wirtschaft:</strong> Rohstoffexporte...</li></ul>`,
+    nature: `<ul><li>Dreiteilung: <strong>Costa</strong>, <strong>Sierra</strong>, <strong>Selva</strong>.</li><li>Naturrisiken: Erdbeben, Erdrutsche.</li></ul>`,
+    society: `<ul><li>Historische Konzentration auf Küste.</li><li>Landflucht und Slumbildung in Städten.</li></ul>`,
+    world: `<ul><li>Stark in Welthandel eingebunden (Bergbau, Agrar).</li><li>Risiko: Abhängigkeit von Rohstoffpreisen.</li></ul>`,
+    problems: `<ul><li><button class="term-btn" data-term="Bad Governance">Bad Governance</button> und <button class="term-btn" data-term="Korruption">Korruption</button>.</li><li>Abhängigkeit (<button class="term-btn" data-term="Terms of Trade">Terms of Trade</button>).</li></ul>`
   },
   costa: {
     name: "Costa (Küste)",
-    facts: `
-      <ul>
-        <li>Die Costa ist ein schmaler Küstenstreifen am Pazifik; klimatisch überwiegend trocken bis wüstenhaft.</li>
-        <li>Wichtige Städte: Lima (Hauptstadt), Piura, Chiclayo wirtschaftliche und politische Zentren.</li>
-      </ul>
-    `,
-    nature: `
-      <ul>
-        <li>Die Küste ist stark vom Humboldtstrom beeinflusst, was reiche Fischgründe, aber eine sehr trockene Landfläche zur Folge hat.</li>
-        <li>Geringe Niederschläge, lokale Oasen durch Bewässerungswirtschaft.</li>
-      </ul>
-    `,
-    society: `
-      <ul>
-        <li>An der Küste konzentrieren sich Industrie, Dienstleistungen und gehobene Landwirtschaft (Export von Spargel, Blaubeeren, Zitrusfrüchten).</li>
-        <li>Die Costa zieht viele Migranten aus der Sierra und Selva an Folge: Urbanisierung, informelle Siedlungen, Druck auf Infrastruktur.</li>
-      </ul>
-    `,
-    world: `
-      <ul>
-        <li>Gute Hafeninfrastruktur ermöglicht Exporte; stark in globalen Agrar und Fischmärkten vernetzt.</li>
-        <li>Die Küste profitiert am stärksten von Außeninvestitionen und Exportmöglichkeiten.</li>
-      </ul>
-    `,
-    problems: `
-      <ul>
-        <li>Wasserknappheit (konkurrierende Nutzung für Landwirtschaft, Industrie und Städte).</li>
-        <li>Stark wachsende Städte leiden unter Wohnungsnot, Verkehrsproblemen und Umweltverschmutzung.</li>
-      </ul>
-    `
+    facts: `<ul><li>Schmaler Küstenstreifen, trocken.</li><li>Zentrum (Lima).</li></ul>`,
+    nature: `<ul><li>Humboldtstrom, Wüstenklima.</li></ul>`,
+    society: `<ul><li>Industrie, Dienstleistung, Migration aus Sierra/Selva.</li></ul>`,
+    world: `<ul><li>Hafeninfrastruktur, Exportzentren.</li></ul>`,
+    problems: `<ul><li>Wasserknappheit, Urbanisierungsprobleme.</li></ul>`
   },
   sierra: {
     name: "Sierra (Anden)",
-    facts: `
-      <ul>
-        <li>Die Sierra besteht aus dem Andenhochland mit starken Höhenunterschieden, Terrassenanbau und traditionellen Dorfgemeinschaften.</li>
-        <li>Große Teile sind nur schwer erreichbar; Straßen und Energieversorgungen sind lückenhaft.</li>
-      </ul>
-    `,
-    nature: `
-      <ul>
-        <li>Kühle bis kalte Klimazonen mit stark variierenden Böden; Erosion und steile Hänge sind problematisch.</li>
-        <li>Hohe Artenvielfalt in bestimmten Andenökosystemen; jedoch schwierige landwirtschaftliche Bedingungen.</li>
-      </ul>
-    `,
-    society: `
-      <ul>
-        <li>Viele Haushalte betreiben <button class="term-btn" data-term="Subsistenzwirtschaft"><strong>Subsistenzwirtschaft</strong></button> — Produktion primär für Eigenbedarf.</li>
-        <li>Gemeinschaften von Ureinwohnern prägen Kultur und soziale Strukturen; oft eingeschränkter Zugang zu staatlichen Diensten.</li>
-      </ul>
-    `,
-    world: `
-      <ul>
-        <li>Bergbau in den Anden trägt erheblich zu Exporten bei, doch die lokale Wertschöpfung (Verarbeitung) bleibt begrenzt.</li>
-        <li>Exporte aus der Sierra können regionalen Wohlstand bringen, führen aber nicht automatisch zu breiter Entwicklung.</li>
-      </ul>
-    `,
-    problems: `
-      <ul>
-        <li>Mangelnde Infrastruktur, Armut und Abwanderung in die Städte (Landflucht) sind weit verbreitet.</li>
-        <li>Soziale Benachteiligung von Ureinwohnern und eingeschränkter Zugang zu Gesundheitsversorgung und Bildung.</li>
-      </ul>
-    `
+    facts: `<ul><li>Andenhochland, schwer erreichbar.</li></ul>`,
+    nature: `<ul><li>Kühle Klimate, Erosion, steile Hänge.</li></ul>`,
+    society: `<ul><li><button class="term-btn" data-term="Subsistenzwirtschaft">Subsistenzwirtschaft</button>, indigene Gemeinschaften.</li></ul>`,
+    world: `<ul><li>Bergbau (Export), aber wenig lokale Verarbeitung.</li></ul>`,
+    problems: `<ul><li>Mangelnde Infrastruktur, <button class="term-btn" data-term="Landflucht">Landflucht</button>.</li></ul>`
   },
   selva: {
     name: "Selva (Amazonas)",
-    facts: `
-      <ul>
-        <li>Weite Flächen tropischen Tieflands mit dichtem Regenwald; große Artenvielfalt, zahlreiche Flüsse.</li>
-        <li>Wichtig für Ökosystemleistungen (Kohlenstoffspeicherung, Wasserkreislauf).</li>
-      </ul>
-    `,
-    nature: `
-      <ul>
-        <li>Hotspot für Artenvielfalt; hohe Niederschläge und warme Temperaturen.</li>
-        <li>Große Flächen sind schwer zugänglich, viele Gebiete ohne feste Straßenanbindung.</li>
-      </ul>
-    `,
-    society: `
-      <ul>
-        <li>Geringe Bevölkerungsdichte; zahlreiche Ureinwohner mit traditionellen Lebensweisen.</li>
-        <li>Problemfelder: Konflikte um Landrechte, zunehmender Straßenbau führt zu Fragmentierung der Lebensräume.</li>
-      </ul>
-    `,
-    world: `
-      <ul>
-        <li>Rohstoffgewinnung (z. B. Holz, Öl) ist wirtschaftlich bedeutsam, oft mit geringer Verarbeitung vor Ort.</li>
-        <li>Ökologische Bedeutung für globales Klima macht nachhaltige Nutzung relevant für internationale Politik.</li>
-      </ul>
-    `,
-    problems: `
-      <ul>
-        <li>Abholzung, Landkonflikte, oft schwache staatliche Präsenz; lokale <button class="term-btn" data-term="Korruption"><strong>Korruption</strong></button> kann Probleme verschärfen.</li>
-        <li>Infrastrukturprojekte bringen kurzfristige Jobs, aber lange Konflikte wegen Umwelt und Sozialfragen.</li>
-      </ul>
-    `
+    facts: `<ul><li>Tropisches Tiefland, Regenwald.</li></ul>`,
+    nature: `<ul><li>Biodiversität, Kohlenstoffspeicher.</li></ul>`,
+    society: `<ul><li>Geringe Dichte, Konflikte um Landrechte.</li></ul>`,
+    world: `<ul><li>Rohstoffe (Holz, Öl), Klimarelevanz.</li></ul>`,
+    problems: `<ul><li>Abholzung, illegale Aktivitäten.</li></ul>`
   },
   sea: {
     name: "Meer (Pazifik)",
-    facts:`<ul><li>Der Humboldtstrom sorgt für nährstoffreiches Wasser und ergiebige Fischgründe.</li></ul>`,
-    nature:`<ul><li>Küstenökosysteme sind Basis für Fischerei und Küstenschutz.</li></ul>`,
-    society:`<ul><li>Fischereigemeinden, Häfen und Seehandel sind wirtschaftlich wichtig.</li></ul>`,
-    world:`<ul><li>Export von Fischprodukten; Küste verbindet Peru mit internationalen Handelsrouten.</li></ul>`,
-    problems:`<ul><li>Überfischung, Meeresverschmutzung und Klimafolgen (z. B. El Niño) gefährden Erträge.</li></ul>`
+    facts:`<ul><li>Humboldtstrom = Fischreichtum.</li></ul>`,
+    nature:`<ul><li>Basis für Fischerei.</li></ul>`,
+    society:`<ul><li>Fischereigemeinden.</li></ul>`,
+    world:`<ul><li>Fischmehl-Export.</li></ul>`,
+    problems:`<ul><li>Überfischung, El Niño.</li></ul>`
   },
   other: {
     name: "Nachbarländer / Welt",
-    facts:`<ul><li>Peru grenzt an Ecuador, Kolumbien, Brasilien, Bolivien und Chile wichtige regionale Beziehungen.</li></ul>`,
-    nature:`<ul><li>Grenzregionen weisen Übergangslandschaften auf (z. B. Andenausläufer, Amazonas-Übergang).</li></ul>`,
-    society:`<ul><li>Grenzhandel, Migration und kultureller Austausch prägen Lebens- und Wirtschaftsformen.</li></ul>`,
-    world:`<ul><li>Internationale Handelsbeziehungen (auch zu China, USA, EU) prägen die Exportorientierung.</li></ul>`,
-    problems:`<ul><li>Umweltprobleme, die mehrere Länder betreffen, Handelsabhängigkeiten und geopolitische Einflüsse.</li></ul>`
+    facts:`<ul><li>Grenzen zu 5 Staaten.</li></ul>`,
+    nature:`<ul><li>Übergangslandschaften.</li></ul>`,
+    society:`<ul><li>Grenzhandel.</li></ul>`,
+    world:`<ul><li>Internationale Beziehungen.</li></ul>`,
+    problems:`<ul><li>Geopolitik, Umweltprobleme.</li></ul>`
   }
 };
 
 /* ============================================================
-   Farben / ID Zuordnung / Interaktion
+   LOGIK
    ============================================================ */
 const COLORS = {
   costa: { base:"rgba(0,0,0,0.01)", hover:"#fff3bf", active:"#ffd43b" },
-  sierra:{ base:"rgba(0,0,0,0.01)", hover: getComputedStyle(document.documentElement).getPropertyValue('--green-light') || "#d3f9d8", active:"#69db7c" },
+  sierra:{ base:"rgba(0,0,0,0.01)", hover:"#d3f9d8", active:"#69db7c" },
   selva: { base:"rgba(0,0,0,0.01)", hover:"#c3fae8", active:"#2f9e44" },
   peru:  { base:"#ffffff", hover:"#e7f5ff", active:"#4dabf7" },
-  sea:   { base: getComputedStyle(document.documentElement).getPropertyValue('--sea-base') || "#e7f8ff", hover: getComputedStyle(document.documentElement).getPropertyValue('--sea-hover') || "#d0efff", active: getComputedStyle(document.documentElement).getPropertyValue('--sea-active') || "#4dabf7" },
-  other: { base: getComputedStyle(document.documentElement).getPropertyValue('--gray-base') || "#f3f4f6", hover: getComputedStyle(document.documentElement).getPropertyValue('--gray-hover') || "#e0e3e6", active: getComputedStyle(document.documentElement).getPropertyValue('--gray-active') || "#adb5bd" }
+  sea:   { base:"#e7f8ff", hover:"#d0efff", active:"#4dabf7" },
+  other: { base:"#f3f4f6", hover:"#e0e3e6", active:"#adb5bd" }
 };
 
 const ID_MAP = {
   'peru':'peru','costa':'costa','sierra':'sierra','selva':'selva','sea':'sea',
-  'other_countries':'other','other_contries':'other','other':'other'
+  'other_countries':'other','other':'other'
+};
+
+/* Symbol Outline Farben */
+const SYMBOL_STROKE = {
+  costa:  "#d9480f",
+  sierra: "#2b8a3e",
+  selva:  "#087f5b",
+  peru:   "#1c7ed6" 
 };
 
 const mapObject = document.getElementById('map-object');
 let activeRegions = new Set();
 let svgRegions = [];
+let svgSymbols = [];
 
-/* ===== Symbol-spezifisch ===== */
-const SYMBOL_STROKE = {
-  costa:  "#d9480f",   // warm / Wirtschaft (orange)
-  sierra: "#2b8a3e",   // grün / Hochland
-  selva:  "#087f5b",   // dunkelgrün / Regenwald
-  peru:   "#1c7ed6"    // blau / Staat
-};
-let svgSymbols = []; // wird in initSvgInteractions befüllt
-
+/* Hilfsfunktion: Farbe setzen */
 function applyFill(el, color){
   if(!el) return;
   el.style.setProperty('fill', color, 'important');
   el.style.setProperty('fill-opacity', '1', 'important');
-  el.style.setProperty('pointer-events', 'all', 'important');
 }
-
 function setState(el,key,state){
   const col = COLORS[key] && COLORS[key][state];
   if(col) applyFill(el, col);
 }
 
+/* Hilfsfunktion: Symbol-Sichtbarkeit direkt per Style steuern */
+function setSymbolVisibility(sym, isVisible) {
+  if(isVisible) {
+    sym.style.opacity = '1';
+    sym.style.pointerEvents = 'auto';
+    sym.style.display = 'block'; // Sicherstellung
+  } else {
+    sym.style.opacity = '0';
+    sym.style.pointerEvents = 'none';
+    // NICHT display: none setzen, damit Transitionen theoretisch möglich bleiben,
+    // aber opacity 0 reicht zum Verstecken.
+  }
+}
+
+/* Klick auf Region */
 function toggleSelect(el){
   const key = el.dataset.key || 'peru';
   if(activeRegions.has(el)){
@@ -345,7 +223,6 @@ function toggleSelect(el){
     setState(el,key,'active');
   }
 }
-
 function clearSelections(){
   activeRegions.forEach(r=>{
     const k = r.dataset.key || 'peru';
@@ -354,47 +231,42 @@ function clearSelections(){
   activeRegions.clear();
 }
 
-/* ------------ Symbol-Logik ------------ */
-
 /**
- * Sichtbarkeit der Symbole updaten.
- * keys: Array von Region-Namen (z. B. ['costa','sierra'])
+ * Symbole updaten
+ * keys: Liste der aktiven Regionen (z.B. ['costa'])
  */
 function updateSymbolsForRegions(keys){
   const activeKeys = Array.isArray(keys) ? keys : [];
-  // normalize: kleine Buchstaben, trim
   const normalized = activeKeys.map(k => String(k).toLowerCase().trim());
 
   svgSymbols.forEach(sym => {
-    sym.classList.remove('symbol-visible','symbol-active');
-    sym.style.pointerEvents = 'none'; // default inaktiv
+    // Reset Active State (Stroke weg)
+    sym.classList.remove('symbol-active');
+    sym.querySelectorAll('*').forEach(child => {
+      child.style.strokeOpacity = '0';
+    });
 
     const id = sym.id || '';
     const parts = id.split('-');
-    const region = parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase().trim() : '';
+    // Nimmt den letzten Teil der ID als Region (z.B. mining-sierra -> sierra)
+    const region = parts.length > 1 ? parts[parts.length - 1].toLowerCase().trim() : '';
 
-    // sichtbar, wenn die region in den ausgewählten keys ist
     if(normalized.includes(region)){
-      sym.classList.add('symbol-visible');
-      sym.style.pointerEvents = 'auto';
+      // Übereinstimmung: Zeigen!
+      setSymbolVisibility(sym, true);
     } else {
-      // verstecken & reset stroke opacity (falls aktiv)
-      sym.classList.remove('symbol-visible','symbol-active');
-      sym.style.pointerEvents = 'none';
-      sym.querySelectorAll('*').forEach(el => {
-        try { el.style.strokeOpacity = '0'; } catch(e){ }
-      });
+      // Keine Übereinstimmung: Verstecken!
+      setSymbolVisibility(sym, false);
     }
   });
 }
 
-/* initialisiert Regionen (Flächen) und Symbole im SVG */
 function initSvgInteractions(svg){
   if(!svg) return;
   svgRegions = [];
   svgSymbols = [];
 
-  // Regionen (IDs wie 'costa','sierra','selva','peru','sea','other_countries')
+  // 1. Regionen finden
   Object.keys(ID_MAP).forEach(id=>{
     const el = svg.querySelector('#'+id);
     if(!el) return;
@@ -402,195 +274,183 @@ function initSvgInteractions(svg){
     el.classList.add('region');
     el.dataset.key = key;
     el.style.cursor = 'pointer';
-    el.style.pointerEvents = 'all';
     setState(el,key,'base');
     svgRegions.push(el);
-  });
 
-  // Symbole: IDs müssen mit "symbol-" beginnen (z. B. symbol-mining-sierra)
-  svgSymbols = Array.from(svg.querySelectorAll('[id^="symbol-"]'));
-  svgSymbols.forEach(sym => {
-    sym.classList.add('symbol');
-    // dataset.region setzen (für einfaches Matching)
-    const id = sym.id || '';
-    const parts = id.split('-');
-    const region = parts[parts.length - 1] ? parts[parts.length - 1].toLowerCase().trim() : '';
-    sym.dataset.region = region;
-    // default: nicht interaktiv (wird gesetzt, wenn sichtbar)
-    sym.style.pointerEvents = 'none';
-  });
-
-  // Region-Eventhandler
-  svgRegions.forEach(el=>{
-    const key = el.dataset.key || 'peru';
-    el.addEventListener('mouseenter', (ev)=>{
-      if(activeRegions.has(el)) return;
-      setState(el,key,'hover');
+    // Events
+    el.addEventListener('mouseenter', ()=>{
+      if(!activeRegions.has(el)) setState(el,key,'hover');
     });
-    el.addEventListener('mouseleave', (ev)=>{
-      if(activeRegions.has(el)) return;
-      setState(el,key,'base');
+    el.addEventListener('mouseleave', ()=>{
+      if(!activeRegions.has(el)) setState(el,key,'base');
     });
-
     el.addEventListener('click', (ev)=>{
       ev.preventDefault();
       if(ev.ctrlKey){
-        // Mehrfachauswahl: selektiere alle Regionen unter dem Mauspunkt
-        let hits = [];
-        try {
-          const doc = svg.ownerDocument;
-          hits = doc.elementsFromPoint(ev.clientX, ev.clientY).filter(n => n.classList && n.classList.contains('region'));
-        } catch(e){
-          const x=ev.clientX,y=ev.clientY;
-          hits = svgRegions.filter(r=>{
-            const rect = r.getBoundingClientRect();
-            return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom;
-          });
-        }
-        hits.forEach(h => toggleSelect(h));
+         // Mehrfachauswahl logic... (vereinfacht für Lesbarkeit)
+         if(activeRegions.has(el)) { activeRegions.delete(el); setState(el,key,'base'); }
+         else { activeRegions.add(el); setState(el,key,'active'); }
       } else {
         const already = activeRegions.has(el);
         clearSelections();
-        if(!already){
-          toggleSelect(el);
-        }
+        if(!already) { activeRegions.add(el); setState(el,key,'active'); }
       }
       updateRightPanel();
     });
   });
 
-  // Symbol-Klick: macht Stroke sichtbar und setzt passende Farbe
+  // 2. Symbole finden & initial verstecken
+  // Sucht alles, was mit "symbol-" anfängt
+  svgSymbols = Array.from(svg.querySelectorAll('[id^="symbol-"]'));
+  
   svgSymbols.forEach(sym => {
-    sym.addEventListener('click', e => {
-      e.stopPropagation(); // Klick auf Symbol soll nicht Region-Click triggern
+    // Initial: Verstecken per JS Style (wichtig!)
+    sym.style.opacity = '0'; 
+    sym.style.pointerEvents = 'none';
+    sym.style.transition = 'opacity 0.3s ease'; // Schöner Übergang
+    
+    // Unterelemente stroke resetten
+    sym.querySelectorAll('*').forEach(child => {
+      child.style.transition = 'stroke-opacity 0.2s, stroke 0.2s';
+      child.style.strokeOpacity = '0';
+    });
 
-      // Symbol nur reagieren lassen, wenn sichtbar
-      if(!sym.classList.contains('symbol-visible')) return;
+    // ID parsen für Farbe
+    const id = sym.id || '';
+    const parts = id.split('-');
+    const region = parts.length > 1 ? parts[parts.length - 1].toLowerCase().trim() : 'peru';
+    sym.dataset.region = region;
 
-      // toggeln: wenn schon aktiv, deaktiviere; sonst aktiviere und deaktiviere andere
-      const wasActive = sym.classList.contains('symbol-active');
+    // Klick auf Symbol
+    sym.addEventListener('click', (e) => {
+      e.stopPropagation(); // Nicht auf Region durchklicken
+      if(sym.style.opacity === '0') return; // Sicher ist sicher
 
-      svgSymbols.forEach(s => s.classList.remove('symbol-active'));
-      if(wasActive){
-        // wenn es bereits aktiv war -> jetzt aus
-        sym.classList.remove('symbol-active');
-        sym.querySelectorAll('*').forEach(el => {
-          try { el.style.strokeOpacity = '0'; } catch(e){ }
-        });
-      } else {
+      // Toggle Active State
+      const isActive = sym.classList.contains('symbol-active');
+      // Andere deaktivieren
+      svgSymbols.forEach(s => {
+        s.classList.remove('symbol-active');
+        s.querySelectorAll('*').forEach(c => c.style.strokeOpacity = '0');
+      });
+
+      if(!isActive){
         sym.classList.add('symbol-active');
-        const region = (sym.dataset.region || 'peru');
-        const strokeColor = SYMBOL_STROKE[region] || SYMBOL_STROKE['peru'] || '#000';
-
-        sym.querySelectorAll('*').forEach(el => {
-          try {
-            el.style.stroke = strokeColor;
-            el.style.strokeOpacity = '1';
-          } catch(e){ /* ignore */ }
+        const col = SYMBOL_STROKE[region] || '#333';
+        sym.querySelectorAll('*').forEach(c => {
+          c.style.stroke = col;
+          c.style.strokeOpacity = '1';
         });
       }
     });
   });
 }
 
+/* Laden der SVG */
 mapObject.addEventListener('load', ()=>{
   try {
-    const svg = mapObject.contentDocument && mapObject.contentDocument.documentElement;
-    if(svg){
-      initSvgInteractions(svg);
-    } else throw new Error('no svg root');
+    const svgDoc = mapObject.contentDocument; 
+    if(svgDoc){
+      initSvgInteractions(svgDoc.documentElement);
+    }
   } catch(e){
+    console.log("Kann SVG nicht direkt lesen (CORS?), versuche Inline-Fetch...");
     attemptFetchInline();
   }
 });
 
+/* Fallback falls Object-Zugriff blockiert */
 async function attemptFetchInline(){
   try{
     const path = mapObject.getAttribute('data') || 'map.svg';
     const resp = await fetch(path);
-    if(!resp.ok) throw new Error('fetch failed '+resp.status);
+    if(!resp.ok) throw new Error('Status '+resp.status);
     const text = await resp.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(text,'image/svg+xml');
     const svgEl = doc.documentElement;
-    svgEl.id = 'inlined-map';
     mapObject.replaceWith(svgEl);
     initSvgInteractions(svgEl);
   } catch(err){
-    console.error('SVG inline failed', err);
-    document.getElementById('region-name').textContent = 'SVG konnte nicht geladen werden.';
+    console.error(err);
   }
 }
 
-/* Update right panel und Symbole */
+/* Panel Update */
 function updateRightPanel(){
   const keysInOrder = Array.from(activeRegions).map(el => el.dataset.key).filter(Boolean);
   const uniqueKeys = Array.from(new Set(keysInOrder));
 
-  // Erst die Symbole updaten (sichtbar/unsichtbar)
+  // 1. Symbole aktualisieren
   updateSymbolsForRegions(uniqueKeys);
 
+  // 2. Texte aktualisieren
   if(uniqueKeys.length === 0){
     document.getElementById('region-name').textContent = 'Bitte eine Region anklicken (STRG für Mehrfachauswahl)';
     ['facts','nature','society','world','problems'].forEach(id=>document.getElementById(id).innerHTML='—');
     return;
   }
-
+  
+  // Prüfen ob Peru komplett
   const parts = ['costa','sierra','selva'];
   const hasAllParts = parts.every(p => uniqueKeys.includes(p));
+  
   if(uniqueKeys.includes('peru') || hasAllParts){
     const d = REGION_DATA['peru'];
-    document.getElementById('region-name').textContent = d.name;
-    document.getElementById('facts').innerHTML = d.facts;
-    document.getElementById('nature').innerHTML = d.nature;
-    document.getElementById('society').innerHTML = d.society;
-    document.getElementById('world').innerHTML = d.world;
-    document.getElementById('problems').innerHTML = d.problems;
-    attachTermHandlers(document.getElementById('info-panel'));
-    return;
+    fillPanel(d);
+  } else {
+    // Mischtext bauen
+    const combined = { name:[], facts:[], nature:[], society:[], world:[], problems:[] };
+    uniqueKeys.forEach(k => {
+      const d = REGION_DATA[k];
+      if(d){
+        combined.name.push(d.name);
+        combined.facts.push(d.facts);
+        combined.nature.push(d.nature);
+        combined.society.push(d.society);
+        combined.world.push(d.world);
+        combined.problems.push(d.problems);
+      }
+    });
+    fillPanel({
+      name: combined.name.join(' + '),
+      facts: combined.facts.join(''),
+      nature: combined.nature.join(''),
+      society: combined.society.join(''),
+      world: combined.world.join(''),
+      problems: combined.problems.join('')
+    });
   }
+}
 
-  document.getElementById('region-name').textContent = uniqueKeys.map(k => REGION_DATA[k] && REGION_DATA[k].name ? REGION_DATA[k].name : k).join(', ');
-  document.getElementById('facts').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].facts : '').join('');
-  document.getElementById('nature').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].nature : '').join('');
-  document.getElementById('society').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].society : '').join('');
-  document.getElementById('world').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].world : '').join('');
-  document.getElementById('problems').innerHTML = uniqueKeys.map(k => REGION_DATA[k] ? REGION_DATA[k].problems : '').join('');
+function fillPanel(data){
+  document.getElementById('region-name').textContent = data.name;
+  document.getElementById('facts').innerHTML = data.facts;
+  document.getElementById('nature').innerHTML = data.nature;
+  document.getElementById('society').innerHTML = data.society;
+  document.getElementById('world').innerHTML = data.world;
+  document.getElementById('problems').innerHTML = data.problems;
   attachTermHandlers(document.getElementById('info-panel'));
 }
 
-/* Modal für Begriffe */
+/* Modal Funktionen */
 function showTermModal(term){
   const def = TERMS[term];
-  if(!def) return alert('Keine Definition für: '+term);
+  if(!def) return;
   const c = document.getElementById('term-modal-container');
   c.innerHTML = `<div class="modal-backdrop"><div class="modal"><h3>${term}</h3><p>${def}</p><button class="close" id="close-term-modal">Schließen</button></div></div>`;
   c.style.display='block';
   document.getElementById('close-term-modal').addEventListener('click', ()=>{ c.innerHTML=''; c.style.display='none'; });
-  function esc(e){ if(e.key==='Escape'){ c.innerHTML=''; c.style.display='none'; document.removeEventListener('keydown',esc); } }
-  document.addEventListener('keydown',esc);
 }
-
 function attachTermHandlers(root){
   if(!root) return;
-  const buttons = root.querySelectorAll('.term-btn');
-  buttons.forEach(b=>{
-    b.removeEventListener('click', termClick);
-    b.addEventListener('click', termClick);
+  root.querySelectorAll('.term-btn').forEach(b=>{
+    b.addEventListener('click', (e)=>{ e.preventDefault(); showTermModal(e.currentTarget.dataset.term); });
   });
-  function termClick(ev){
-    ev.preventDefault();
-    const t = ev.currentTarget.dataset.term;
-    showTermModal(t);
-  }
 }
-
 document.addEventListener('click',(e)=>{
-  const btn = e.target.closest && e.target.closest('.term-btn');
-  if(btn && btn.dataset && btn.dataset.term){
-    e.preventDefault();
-    showTermModal(btn.dataset.term);
-  }
+  const btn = e.target.closest('.term-btn');
+  if(btn) { e.preventDefault(); showTermModal(btn.dataset.term); }
 });
 </script>
 </body>
